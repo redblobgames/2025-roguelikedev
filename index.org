@@ -1,0 +1,20 @@
+#+title: r/roguelikedev summer tutorial
+#+date: <2020-06-18 Thu>
+
+I had previously followed the r/roguelikedev summer tutorial series, using Rust, with the goal of learning Rust. I got halfway through. 
+I learned a lot of Rust. In part I gave up because Rust frustrated me, especially with libtcod.
+This year I decided that instead to use a language I already know, Javascript. I'll use [[https://ondras.github.io/rot.js/hp/][rot.js]].
+
+#+begin_export html
+<figure id="container"/>
+#+end_export
+
+#+begin_export html
+<x:footer>
+  <script src="third-party/rot.js"/>
+  <script src="roguelike-dev.js"/>
+
+  Created 18 Jun 2020; &#160;
+  <!-- hhmts start -->Last modified: 18 Jun 2020<!-- hhmts end -->
+</x:footer>
+#+end_export
