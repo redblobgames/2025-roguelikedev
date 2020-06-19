@@ -6,15 +6,105 @@ I learned a lot of Rust. In part I gave up because Rust frustrated me, especiall
 This year I decided that instead to use a language I already know, Javascript. I'll use [[https://ondras.github.io/rot.js/hp/][rot.js]].
 
 #+begin_export html
-<figure id="container"/>
+<figure>
+  <div id="game"/>
+  <div id="focus-reminder">click game to focus</div>
+</figure>
 #+end_export
+
+Source code: [[href:roguelike-dev.js][roguelike-dev.js]]
+
+* Getting started
+
+HTML:
+
+#+begin_src xml
+<figure id="game"></figure>
+<script src="https://unpkg.com/rot-js"></script>
+<script src="game.js"></script>
+#+end_src
+
+Javascript:
+
+#+begin_src js
+const display = new ROT.Display({width: 60, height: 25, 
+                                 fontFamily: 'Roboto Mono'});
+document.getElementById('game')
+        .appendChild(display.getContainer());
+display.draw(5, 4, '@');
+#+end_src
+
+[[./screenshots/1.png]]
+
+* Keyboard input
+
+There are various places I could attach an event handler. 
+
+- The [[https://ondras.github.io/rot.js/manual/#keyboard][rot.js manual]] suggests using an ~<input>~ element for event handlers. I decided not to do this. If that input ever loses focus, I don't know how to get focus back. Clicking an input box is what I think of when I'm typing input text but not what I expect to do when moving around on the map.
+- One [[http://www.roguebasin.roguelikedevelopment.org/index.php?title=Rot.js_tutorial,_part_1][rot.js tutorial]] attaches the event handlers to the global =window= object. I decided not to do this. There are times when I am typing elsewhere on the page (typing into the site search box, or adding a comment, or maybe even in-game actions like typing my name in). I don't want the game to treat those keystrokes as player actions.
+
+I decided to instead make the game map focusable by adding the ~tabindex="1"~ attribute to its =canvas=. This way, clicking /on the game map/ will give it keyboard focus. You can click away to add a comment and then come back to the game.
+
+Javascript:
+
+#+begin_src js
+const canvas = display.getContainer();
+canvas.addEventListener('keydown', handleKeyDown);
+canvas.setAttribute('tabindex', "1");
+canvas.focus();
+#+end_src
+
+The problem is that a canvas isn't an obviously focusable element. What happens if it ever loses focus? I decided to add a message when the canvas loses focus:
+
+HTML:
+
+#+begin_src xml
+<figure>
+  <div id="game"/>
+  <div id="focus-reminder">click game to focus</div>
+</figure>
+#+end_src
+
+Javascript:
+
+#+begin_src js
+const focusReminder = document.getElementById('focus-reminder');
+canvas.addEventListener('blur', () => { focusReminder.style.visibility = 'visible'; });
+canvas.addEventListener('focus', () => { focusReminder.style.visibility = 'hidden'; });
+#+end_src
+
+CSS:
+
+#+begin_src css
+#game canvas { display: block; margin: auto; }
+#+end_src
+
+Here's what it looks like if it does not have focus:
+
+[[./screenshots/2.png]]
+
+The next thing I need is an event handler:
+
+#+begin_src js
+function handleKeyDown(event) {
+    console.log('keydown', event);
+}
+#+end_src
+
+I often start out with a =console.log= to make sure that a function is getting called. What's next? Let's move around.
+
+Oh, I can't do that yet, because I don't have a player position.
 
 #+begin_export html
 <x:footer>
+  <style>
+    #game canvas { display: block; margin: auto; }
+  </style>
   <script src="third-party/rot.js"/>
   <script src="roguelike-dev.js"/>
+  <script src="prepare-screenshot.js"/>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 18 Jun 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 19 Jun 2020<!-- hhmts end -->
 </x:footer>
 #+end_export
