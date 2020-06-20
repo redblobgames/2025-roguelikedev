@@ -1,9 +1,8 @@
 #+title: r/roguelikedev summer tutorial
 #+date: <2020-06-18 Thu>
 
-I had previously followed the r/roguelikedev summer tutorial series, using Rust, with the goal of learning Rust. I got halfway through. 
-I learned a lot of Rust. In part I gave up because Rust frustrated me, especially with libtcod.
-This year I decided that instead to use a language I already know, Javascript. I'll use [[https://ondras.github.io/rot.js/hp/][rot.js]].
+I had previously followed the r/roguelikedev summer tutorial series, but never finished.
+I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]] this time.
 
 #+begin_export html
 <figure>
@@ -12,9 +11,14 @@ This year I decided that instead to use a language I already know, Javascript. I
 </figure>
 #+end_export
 
+Arrow keys to move.
+
 Source code: [[href:roguelike-dev.js][roguelike-dev.js]]
 
 * Getting started
+
+I'm going to follow the [[http://rogueliketutorials.com/tutorials/tcod/][Roguelike Tutorial for Python]] and adapt it for [[https://ondras.github.io/rot.js/hp/][rot.js]].
+[[http://rogueliketutorials.com/tutorials/tcod/part-0/][Part 0]] of the tutorial covers setting up Python and libtcod. I'll instead set up rot.js.
 
 HTML:
 
@@ -27,18 +31,23 @@ HTML:
 Javascript:
 
 #+begin_src js
-const display = new ROT.Display({width: 60, height: 25, 
-                                 fontFamily: 'Roboto Mono'});
+const display = new ROT.Display({width: 60, height: 25});
 document.getElementById('game')
         .appendChild(display.getContainer());
 display.draw(5, 4, '@');
 #+end_src
 
+Set the =fontFamily= property if you want to override the default browser monospace font. For example, =fontFamily: "Roboto Mono"=.
+
 [[./screenshots/1.png]]
+
+A warning about my coding style: I follow /make it work before making the code nice/. That means I'll use plenty of global variables and hacks at first, and clean up some of them later. Don't look at my code as an example of how to structure a program "properly".
 
 * Keyboard input
 
-There are various places I could attach an event handler. 
+[[http://rogueliketutorials.com/tutorials/tcod/part-1/][Part 1 of the roguelike tutorial]] covers setting up a screen and keyboard handler. I already set up the screen in the previous section so now I need to set up a keyboard handler. Unlike Python, we don't write an event loop in the browser. The browser already is running an event loop, and we add event handlers to it. 
+
+There are various places to attach a keyboard event handler. 
 
 - The [[https://ondras.github.io/rot.js/manual/#keyboard][rot.js manual]] suggests using an ~<input>~ element for event handlers. I decided not to do this. If that input ever loses focus, I don't know how to get focus back. Clicking an input box is what I think of when I'm typing input text but not what I expect to do when moving around on the map.
 - One [[http://www.roguebasin.roguelikedevelopment.org/index.php?title=Rot.js_tutorial,_part_1][rot.js tutorial]] attaches the event handlers to the global =window= object. I decided not to do this. There are times when I am typing elsewhere on the page (typing into the site search box, or adding a comment, or maybe even in-game actions like typing my name in). I don't want the game to treat those keystrokes as player actions.
@@ -79,6 +88,8 @@ CSS:
 #game canvas { display: block; margin: auto; }
 #+end_src
 
+The CSS is not self-explanatory. I use =display: block= because a =<canvas>= element is /inline/ by default, and that means it has some extra space below it matching the extra space a line of text has below it to separate it from the next line below. I don't want that so I change it from an inline element to a block element. I use =margin: auto= to center the canvas in the parent element.
+
 Here's what it looks like if it does not have focus:
 
 [[./screenshots/2.png]]
@@ -91,9 +102,9 @@ function handleKeyDown(event) {
 }
 #+end_src
 
-I often start out with a =console.log= to make sure that a function is getting called. What's next? Let's move around.
+I often start out with a =console.log= to make sure that a function is getting called.
 
-Oh, I can't do that yet, because I don't have a player position.
+What's next for Part 1? I need to make arrow keys move the player around. I can't do that yet, because I don't have a player position.
 
 * Moving around
 
@@ -113,9 +124,9 @@ function draw() {
 
 function handleKeyDown(event) {
     if (event.keyCode === ROT.KEYS.VK_RIGHT) { player.x++; }
-    if (event.keyCode === ROT.KEYS.VK_LEFT) { player.x--; }
-    if (event.keyCode === ROT.KEYS.VK_DOWN) { player.y++; }
-    if (event.keyCode === ROT.KEYS.VK_UP) { player.y--; }
+    if (event.keyCode === ROT.KEYS.VK_LEFT)  { player.x--; }
+    if (event.keyCode === ROT.KEYS.VK_DOWN)  { player.y++; }
+    if (event.keyCode === ROT.KEYS.VK_UP)    { player.y--; }
     draw();
 }
 
@@ -127,21 +138,37 @@ draw();
 Two problems:
 
 1. When using arrow keys, /the page scrolls/. I can fix this by adding =event.preventDefault()=. But if I do that, then browser hotkeys stop working. So I need to do something a little smarter. I'm going to prevent the default /only/ if I handled the key.
-2. The =@= character doesn't get erased when you move. I need to either draw a space character over the old position, or I need to clear the game board and redraw everything. I'm going to redraw everything.
+2. The =@= character doesn't get erased when I move. I need to either draw a space character over the old position, or I need to clear the game board and redraw everything. I'm going to redraw everything. I find it to be simpler and less error prone.
+
+This would be a good time to mention that the rot.js interactive manual doesn't cover all the functionality. You may also want to look at [[https://ondras.github.io/rot.js/doc/][the non-interactive documentation]] for a more complete list of methods. In this case, I looked at [[https://ondras.github.io/rot.js/doc/classes/_display_canvas_.canvas.html][display/canvas→Canvas]] to find the =clear= method.
+
+[[http://rogueliketutorials.com/tutorials/tcod/part-1/][Part 1]] of the Python tutorial splits up keyboard handling into a function that generates an /action/ and another function that /performs/ the action. I'll do the same.
 
 #+begin_src js
-function handleKeyDown(event) {
+function handleKeys(keyCode) {
     const actions = {
-        [ROT.KEYS.VK_RIGHT]: () => { player.x++; },
-        [ROT.KEYS.VK_LEFT]:  () => { player.x--; },
-        [ROT.KEYS.VK_DOWN]:  () => { player.y++; },
-        [ROT.KEYS.VK_UP]:    () => { player.y--; },
+        [ROT.KEYS.VK_RIGHT]: () => ['move', +1, 0],
+        [ROT.KEYS.VK_LEFT]:  () => ['move', -1, 0],
+        [ROT.KEYS.VK_DOWN]:  () => ['move', 0, +1],
+        [ROT.KEYS.VK_UP]:    () => ['move', 0, -1],
     };
-    if (actions[event.keyCode]) {
-        actions[event.keyCode]();
+    let action = actions[keyCode];
+    return action ? action() : undefined;
+}
+    
+function handleKeyDown(event) {
+    let action = handleKeys(event.keyCode);
+    if (action) {
+        if (action[0] === 'move') {
+            let [_, dx, dy] = action;
+            player.x += dx;
+            player.y += dy;
+            draw();
+        } else {
+            throw `unhandled action ${action}`;
+        }
         event.preventDefault();
     }
-    draw();
 }
 
 function draw() {
@@ -149,6 +176,58 @@ function draw() {
     drawCharacter(player);
 }
 #+end_src
+
+Ok, that's better. It only captures keys that are being used for the game, and leaves browser hotkeys alone. And it erases the screen before drawing a new frame.
+
+What else is in Part 1 of the tutorial?
+
+- fullscreen toggle
+- press escape to quit
+
+I'm going to skip these two.
+
+* Entities
+
+[[http://rogueliketutorials.com/tutorials/tcod/part-2/][Part 2]] of the tutorial covers entities. My design differs slightly from the tutorial:
+
+1. I include only "world" data in the entity. This is data about the entity in the world, but /not/ the data about the entity being drawn.
+2. I include an entity type string instead. Normally this is "implicit" information in that each object belongs to a class. I prefer making /game/ classes explicit.
+3. I also don't put methods in this object. I've had too many methods that don't "belong" in any one class, so I prefer to leave them as free functions.
+4. I give each entity an id. I find that useful in debugging. It may come in handy later for serialization or events or logging.
+
+#+begin_src js
+function createEntity(type, x, y) {
+    let id = ++createEntity.id;
+    return { id, type, x, y };
+}
+createEntity.id = 0;
+
+let player = createEntity('player', 5, 4);
+#+end_src
+
+Here's an example of how this design differs from the one in the Python tutorial:
+
+#+begin_src js
+function drawEntity(entity) {
+    const visuals = {
+        player: ['@', "hsl(60, 100%, 50%)"],
+        troll: ['T', "hsl(120, 60%, 50%)"],
+        orc: ['o', "hsl(100, 30%, 50%)"],
+    };
+
+    const [ch, fg, bg] = visuals[entity.type];
+    display.draw(entity.x, entity.y, ch, fg, bg);
+}
+#+end_src
+
+Instead of storing the character and the color /in the object/, I store a /type/ in the object, and then store the character and color in a lookup table. There are some scenarios where I like this design better:
+
+- I want to change the appearance based on its status (bleeding, poisoned, etc.).
+- I want to show another map (perhaps a sonar view) where the visuals of each entity are different.
+- I save the game, and then in the new version of the game I want to change colors. I'd rather not save the colors in the save file.
+- I want to switch from ascii to graphical tiles.
+
+
 
 #+begin_export html
 <x:footer>

@@ -23,30 +23,56 @@ function setupKeyboardHandler(display, handler) {
     canvas.focus();
 }
 
-let player = {x: 5, y: 4, ch: '@'};
+function createEntity(type, x, y) {
+    let id = ++createEntity.id;
+    return { id, type, x, y };
+}
+createEntity.id = 0;
 
-function drawCharacter(character) {
-    let {x, y, ch} = character;
-    display.draw(x, y, ch);
+let player = createEntity('player', 5, 4);
+let troll = createEntity('troll', 20, 10);
+
+function drawEntity(entity) {
+    const visuals = {
+        player: ['@', "hsl(60, 100%, 50%)"],
+        troll: ['T', "hsl(120, 60%, 50%)"],
+        orc: ['o', "hsl(100, 30%, 50%)"],
+    };
+
+    const [ch, fg, bg] = visuals[entity.type];
+    display.draw(entity.x, entity.y, ch, fg, bg);
 }
 
 function draw() {
     display.clear();
-    drawCharacter(player);
+    drawEntity(player);
+    drawEntity(troll);
+}
+
+function handleKeys(keyCode) {
+    const actions = {
+        [ROT.KEYS.VK_RIGHT]: () => ['move', +1, 0],
+        [ROT.KEYS.VK_LEFT]:  () => ['move', -1, 0],
+        [ROT.KEYS.VK_DOWN]:  () => ['move', 0, +1],
+        [ROT.KEYS.VK_UP]:    () => ['move', 0, -1],
+    };
+    let action = actions[keyCode];
+    return action ? action() : undefined;
 }
 
 function handleKeyDown(event) {
-    const actions = {
-        [ROT.KEYS.VK_RIGHT]: () => { player.x++; },
-        [ROT.KEYS.VK_LEFT]:  () => { player.x--; },
-        [ROT.KEYS.VK_DOWN]:  () => { player.y++; },
-        [ROT.KEYS.VK_UP]:    () => { player.y--; },
-    };
-    if (actions[event.keyCode]) {
-        actions[event.keyCode]();
+    let action = handleKeys(event.keyCode);
+    if (action) {
+        if (action[0] === 'move') {
+            let [_, dx, dy] = action;
+            player.x += dx;
+            player.y += dy;
+            draw();
+        } else {
+            throw `unhandled action ${action}`;
+        }
         event.preventDefault();
     }
-    draw();
 }
 
 draw();
