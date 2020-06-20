@@ -23,14 +23,17 @@ function setupKeyboardHandler(display, handler) {
     canvas.focus();
 }
 
+let entities = new Map();
 function createEntity(type, x, y) {
     let id = ++createEntity.id;
-    return { id, type, x, y };
+    let entity = { id, type, x, y };
+    entities.set(id, entity);
+    return entity;
 }
 createEntity.id = 0;
 
 let player = createEntity('player', 5, 4);
-let troll = createEntity('troll', 20, 10);
+createEntity('troll', 20, 10);
 
 function drawEntity(entity) {
     const visuals = {
@@ -45,8 +48,9 @@ function drawEntity(entity) {
 
 function draw() {
     display.clear();
-    drawEntity(player);
-    drawEntity(troll);
+    for (let entity of entities.values()) {
+        drawEntity(entity);
+    }
 }
 
 function handleKeys(keyCode) {

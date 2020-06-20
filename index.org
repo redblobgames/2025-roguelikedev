@@ -43,7 +43,7 @@ Set the =fontFamily= property if you want to override the default browser monosp
 
 A warning about my coding style: I follow /make it work before making the code nice/. That means I'll use plenty of global variables and hacks at first, and clean up some of them later. Don't look at my code as an example of how to structure a program "properly".
 
-* Keyboard input
+* Key input
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-1/][Part 1 of the roguelike tutorial]] covers setting up a screen and keyboard handler. I already set up the screen in the previous section so now I need to set up a keyboard handler. Unlike Python, we don't write an event loop in the browser. The browser already is running an event loop, and we add event handlers to it. 
 
@@ -106,7 +106,7 @@ I often start out with a =console.log= to make sure that a function is getting c
 
 What's next for Part 1? I need to make arrow keys move the player around. I can't do that yet, because I don't have a player position.
 
-* Moving around
+* Player movement
 
 I need to keep track of the player position and then change it when a key is pressed.
 
@@ -222,12 +222,59 @@ function drawEntity(entity) {
 
 Instead of storing the character and the color /in the object/, I store a /type/ in the object, and then store the character and color in a lookup table. There are some scenarios where I like this design better:
 
-- I want to change the appearance based on its status (bleeding, poisoned, etc.).
-- I want to show another map (perhaps a sonar view) where the visuals of each entity are different.
-- I save the game, and then in the new version of the game I want to change colors. I'd rather not save the colors in the save file.
-- I want to switch from ascii to graphical tiles.
+- if I want to change the appearance based on its status (bleeding, poisoned, etc.)
+- if I want to show another map (perhaps a sonar view) where the visuals of each entity are different
+- if I save the game, and then in the new version of the game I want to change colors
+- if I want to switch from ascii to graphical tiles
 
+Ok, cool, I have a way to make entities. Let's make a second one:
 
+#+begin_src js
+let troll = createEntity('troll', 20, 10);
+#+end_src
+
+Now I have to modify the drawing function to draw it too:
+
+#+begin_src js
+function draw() {
+    display.clear();
+    drawEntity(player);
+    drawEntity(troll);
+}
+#+end_src
+
+[[./screenshots/4.png]]
+
+Looks good. The player and monster have different appearances.
+
+I can't keep adding a variable for each entity. Part 2 of the Roguelike Tutorial converts the individual entity variables into an set of entities. 
+I was going to use an array or a Set but decided to use a Map instead.
+
+#+begin_src js
+let entities = new Map();
+function createEntity(type, x, y) {
+    let id = ++createEntity.id;
+    let entity = { id, type, x, y };
+    entities.set(id, entity);
+    return entity;
+}
+createEntity.id = 0;
+#+end_src
+
+Then when I draw them, I can loop over entities:
+
+#+begin_src js
+function draw() {
+    display.clear();
+    for (let entity of entities.values()) {
+        drawEntity(entity);
+    }
+}
+#+end_src
+
+* Map
+
+The second half of [[http://rogueliketutorials.com/tutorials/tcod/part-2/][Part 2]] creates a tile map.
 
 #+begin_export html
 <x:footer>
@@ -240,6 +287,6 @@ Instead of storing the character and the color /in the object/, I store a /type/
   <script src="prepare-screenshot.js"/>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 20 Jun 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 24 Jun 2020<!-- hhmts end -->
 </x:footer>
 #+end_export
