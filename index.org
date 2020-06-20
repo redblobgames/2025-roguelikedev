@@ -95,16 +95,72 @@ I often start out with a =console.log= to make sure that a function is getting c
 
 Oh, I can't do that yet, because I don't have a player position.
 
+* Moving around
+
+I need to keep track of the player position and then change it when a key is pressed.
+
+#+begin_src js
+let player = {x: 5, y: 4, ch: '@'};
+
+function drawCharacter(character) {
+    let {x, y, ch} = character;
+    display.draw(x, y, ch);
+}
+
+function draw() {
+    drawCharacter(player);
+}
+
+function handleKeyDown(event) {
+    if (event.keyCode === ROT.KEYS.VK_RIGHT) { player.x++; }
+    if (event.keyCode === ROT.KEYS.VK_LEFT) { player.x--; }
+    if (event.keyCode === ROT.KEYS.VK_DOWN) { player.y++; }
+    if (event.keyCode === ROT.KEYS.VK_UP) { player.y--; }
+    draw();
+}
+
+draw();
+#+end_src
+
+[[./screenshots/3.png]]
+
+Two problems:
+
+1. When using arrow keys, /the page scrolls/. I can fix this by adding =event.preventDefault()=. But if I do that, then browser hotkeys stop working. So I need to do something a little smarter. I'm going to prevent the default /only/ if I handled the key.
+2. The =@= character doesn't get erased when you move. I need to either draw a space character over the old position, or I need to clear the game board and redraw everything. I'm going to redraw everything.
+
+#+begin_src js
+function handleKeyDown(event) {
+    const actions = {
+        [ROT.KEYS.VK_RIGHT]: () => { player.x++; },
+        [ROT.KEYS.VK_LEFT]:  () => { player.x--; },
+        [ROT.KEYS.VK_DOWN]:  () => { player.y++; },
+        [ROT.KEYS.VK_UP]:    () => { player.y--; },
+    };
+    if (actions[event.keyCode]) {
+        actions[event.keyCode]();
+        event.preventDefault();
+    }
+    draw();
+}
+
+function draw() {
+    display.clear();
+    drawCharacter(player);
+}
+#+end_src
+
 #+begin_export html
 <x:footer>
   <style>
     #game canvas { display: block; margin: auto; }
+    .figure img { border: 2px solid #999; box-shadow: 0 1px 2px 2px rgba(0,0,0,0.2); }
   </style>
   <script src="third-party/rot.js"/>
   <script src="roguelike-dev.js"/>
   <script src="prepare-screenshot.js"/>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 19 Jun 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 20 Jun 2020<!-- hhmts end -->
 </x:footer>
 #+end_export

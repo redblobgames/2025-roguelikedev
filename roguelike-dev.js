@@ -31,11 +31,22 @@ function drawCharacter(character) {
 }
 
 function draw() {
+    display.clear();
     drawCharacter(player);
 }
 
 function handleKeyDown(event) {
-    console.log('keydown', event);
+    const actions = {
+        [ROT.KEYS.VK_RIGHT]: () => { player.x++; },
+        [ROT.KEYS.VK_LEFT]:  () => { player.x--; },
+        [ROT.KEYS.VK_DOWN]:  () => { player.y++; },
+        [ROT.KEYS.VK_UP]:    () => { player.y--; },
+    };
+    if (actions[event.keyCode]) {
+        actions[event.keyCode]();
+        event.preventDefault();
+    }
+    draw();
 }
 
 draw();
