@@ -274,7 +274,69 @@ function draw() {
 
 * Map
 
-The second half of [[http://rogueliketutorials.com/tutorials/tcod/part-2/][Part 2]] creates a tile map.
+The second half of [[http://rogueliketutorials.com/tutorials/tcod/part-2/][Part 2]] creates a tile map. ROT.js includes map creation functions so I'll use one of their algorithms. ROT will call a callback function for each map tile, 0 for walkable and 1 for wall. I'm going to store this data in a Map, indexed by a string =x,y=. For example at position x=3, y=5, I'll use a string key ="3,5"=.
+
+#+begin_src js
+function createMap(width, height) {
+    let map = {
+        width, height,
+        tiles: new Map(),
+        key(x, y) { return `${x},${y}`; },
+        get(x, y) { return this.tiles.get(this.key(x, y)); },
+        set(x, y, value) { this.tiles.set(this.key(x, y), value); },
+    };
+
+    const digger = new ROT.Map.Digger(width, height);
+    digger.create((x, y, contents) => map.set(x, y, contents));
+    return map;
+}
+let map = createMap(60, 25);
+#+end_src
+
+The next step is to draw the map. I want to draw it first, before the player or monsters.
+
+#+begin_src js
+function draw() {
+    display.clear();
+    for (let y = 0; y < map.height; y++) {
+        for (let x = 0; x < map.width; x++) {
+            if (map.get(x, y)) {
+                display.draw(x, y, '⨉', "hsl(60, 10%, 40%)", "gray");
+            } else {
+                display.draw(x, y, '·', "hsl(60, 50%, 50%)", "black");
+            }
+        }
+    }
+    for (let entity of entities.values()) {
+        drawEntity(entity);
+    }
+}
+#+end_src
+
+[[./screenshots/5.png]]
+
+The final step is to make player movement not allow moving onto a wall. I modified the movement function to check if the map tile is =0=. This is slightly different from checking that it's not =1= in that this will automatically makes sure I don't walk off the map, where the values are =undefined=.
+
+#+begin_src js
+function handleKeyDown(event) {
+    let action = handleKeys(event.keyCode);
+    if (action) {
+        if (action[0] === 'move') {
+            let [_, dx, dy] = action;
+            let newX = player.x + dx,
+                newY = player.y + dy;
+            if (map.get(newX, newY) === 0) {
+                player.x = newX;
+                player.y = newY;
+            }
+            draw();
+        } else {
+            throw `unhandled action ${action}`;
+        }
+        event.preventDefault();
+    }
+}
+#+end_src
 
 #+begin_export html
 <x:footer>
