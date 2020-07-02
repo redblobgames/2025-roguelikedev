@@ -435,11 +435,119 @@ function draw() {
 }
 #+end_src
 
-Now it matches Part 4 of the Python tutorial:
+Now the background colors behind entities look reasonable:
 
 [[./screenshots/7.png]]
 
 The background color comes from the map and the foreground color and character comes from the entity.
+
+The next step is to implement the /three/ states of the map:
+
+1. Unexplored: don't show anything.
+2. Explored, but not currently visible: show in blue.
+3. Visible: show in yellow.
+
+For this I'll add a flag =explored= to the map. It will start out false and become true if the tile is /ever/ visible. I realized that my map object isn't great. It has a =get= and =set= but that is returning 0 for a floor and 1 for a tile. I also have other similar types of maps like =lightMap= and a =glyphMap=.
+
+I'm going to make a wrapper around 2d maps from (x,y) to any value:
+
+#+begin_src js
+function createMap(initializer) {
+    function key(x, y) { return `${x},${y}`; }
+    return {
+        _values: new Map(),
+        at(x, y) {
+            let k = key(x, y);
+            if (!this._values.has(k)) { this._values.set(k, initializer()); }
+            return this._values.get(k);
+        },
+    };
+}
+#+end_src
+
+I replaced my game map data structure with the generic one:
+
+#+begin_src js
+function createTileMap(width, height) {
+    let tileMap = createMap();
+    const digger = new ROT.Map.Digger(width, height);
+    digger.create((x, y, contents) =>
+        tileMap.set(x, y, {
+            walkable: contents === 0,
+            wall: contents === 1,
+            explored: false,
+        })
+    );
+    return tileMap;
+}
+#+end_src
+
+A note about data structure: I used to fall into a loop. I would put a /lot/ of effort into the core data structures, figuring out class hierarchies, modules, extensibility, generics, patterns, etc. Then I would /use/ it for a bit and realize something isn't great. But I wouldn't change it because I had put /so much effort/ into it that it was really hard to justify throwing anything away.
+
+These days I /don't start/ with the right data structures. Instead, I start with /something/ and then plan to change it once I figure out what I want. I /discover/ the best patterns while working on the project, instead of /starting/ with the patterns and then making the project fit. Because I put so little effort into the initial code, it's no big deal to throw it out and replace it with something better.
+
+I changed the data structures for this project four times already, and it was still faster than if I had tried to figure out everything ahead of time. I'm optimizing for /making it easy to make changes/.
+
+Now that I have a 2d sparse map data structure, I'll reuse it for the light and glyph maps. While calculating the light map, I also update the =explored= flag in the tile map. Another possible design would be to keep a separate =exploredMap= instead of modifying the tile map; that would allow for multiple explored maps corresponding to different player characters. But this will do for now.
+
+#+begin_src js
+function computeLightMap(center, tileMap) {
+    let lightMap = createMap(); // 0.0–1.0
+    fov.compute(center.x, center.y, 10, (x, y, r, visibility) => {
+        lightMap.set(x, y, visibility);
+        if (visibility > 0.0) {
+            if (tileMap.has(x, y))
+            tileMap.get(x, y).explored = true;
+        }
+    });
+    return lightMap;
+}
+
+function computeGlyphMap(entities) {
+    let glyphMap = createMap(); // [char, fg, optional bg]
+    for (let entity of entities.values()) {
+        glyphMap.set(entity.x, entity.y, entityGlyph(entity.type));
+    }
+    return glyphMap;
+}
+#+end_src
+
+Here's the new =draw()= function:
+
+#+begin_src js
+const mapColors = {
+    [false]: {[false]: "rgb(50, 50, 150)", [true]: "rgb(0, 0, 100)"},
+    [true]: {[false]: "rgb(200, 180, 50)", [true]: "rgb(130, 110, 50)"}
+};
+function draw() {
+    display.clear();
+
+    let lightMap = computeLightMap(player, tileMap);
+    let glyphMap = computeGlyphMap(entities);
+    
+    for (let y = 0; y < HEIGHT; y++) {
+        for (let x = 0; x < WIDTH; x++) {
+            let tile = tileMap.get(x, y);
+            if (!tile || !tile.explored) { continue; }
+            let lit = lightMap.get(x, y) > 0.0;
+            let ch = ' ',
+                fg = "black",
+                bg = mapColors[lit][tile.wall];
+            let glyph = glyphMap.get(x, y);
+            if (glyph) {
+                ch = lit? glyph[0] : ch;
+                fg = glyph[1];
+                bg = glyph[2] || bg;
+            }
+            display.draw(x, y, ch, fg, bg);
+        }
+    }
+}
+#+end_src
+
+And hey, it works!
+
+[[./screenshots/8.png]]
 
 
 #+begin_export html
@@ -450,7 +558,6 @@ The background color comes from the map and the foreground color and character c
   </style>
   <script src="third-party/rot.js"/>
   <script src="roguelike-dev.js"/>
-  <script src="prepare-screenshot.js"/>
 
   Created 18 Jun 2020; &#160;
   <!-- hhmts start -->Last modified: 01 Jul 2020<!-- hhmts end -->

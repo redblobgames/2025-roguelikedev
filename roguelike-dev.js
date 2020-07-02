@@ -30,23 +30,32 @@ let player = createEntity('player', 1, 5);
 createEntity('troll', 24, 16);
 
 
-
-function createMap(width, height) {
-    let map = {
-        width, height,
-        tiles: new Map(),
-        key(x, y) { return `${x},${y}`; },
-        get(x, y) { return this.tiles.get(this.key(x, y)); },
-        set(x, y, value) { this.tiles.set(this.key(x, y), value); },
+function createMap() {
+    function key(x, y) { return `${x},${y}`; }
+    return {
+        _values: new Map(),
+        has(x, y) { return this._values.has(key(x, y)); },
+        get(x, y) { return this._values.get(key(x, y)); },
+        set(x, y, value) { this._values.set(key(x, y), value); },
     };
-
-    const digger = new ROT.Map.Digger(width, height);
-    digger.create((x, y, contents) => map.set(x, y, contents));
-    return map;
 }
-let map = createMap(60, 25);
 
-const fov = new ROT.FOV.PreciseShadowcasting((x, y) => map.get(x, y) === 0);
+function createTileMap(width, height) {
+    let tileMap = createMap();
+    const digger = new ROT.Map.Digger(width, height);
+    digger.create((x, y, contents) =>
+        tileMap.set(x, y, {
+            walkable: contents === 0,
+            wall: contents === 1,
+            explored: false,
+        })
+    );
+    return tileMap;
+}
+const WIDTH = 60, HEIGHT = 25;
+let tileMap = createTileMap(WIDTH, HEIGHT);
+
+const fov = new ROT.FOV.PreciseShadowcasting((x, y) => tileMap.has(x, y) && tileMap.get(x, y).walkable);
 
 /** return [char, fg, optional bg] for a given entity */
 function entityGlyph(entityType) {
@@ -58,31 +67,45 @@ function entityGlyph(entityType) {
     return visuals[entityType];
 }
 
+function computeLightMap(center, tileMap) {
+    let lightMap = createMap(); // 0.0–1.0
+    fov.compute(center.x, center.y, 10, (x, y, r, visibility) => {
+        lightMap.set(x, y, visibility);
+        if (visibility > 0.0) {
+            if (tileMap.has(x, y))
+            tileMap.get(x, y).explored = true;
+        }
+    });
+    return lightMap;
+}
+
+function computeGlyphMap(entities) {
+    let glyphMap = createMap(); // [char, fg, optional bg]
+    for (let entity of entities.values()) {
+        glyphMap.set(entity.x, entity.y, entityGlyph(entity.type));
+    }
+    return glyphMap;
+}
+
+const mapColors = {
+    [false]: {[false]: "rgb(50, 50, 150)", [true]: "rgb(0, 0, 100)"},
+    [true]: {[false]: "rgb(200, 180, 50)", [true]: "rgb(130, 110, 50)"}
+};
 function draw() {
     display.clear();
 
-    let lightMap = new Map(); // map key to 0.0–1.0
-    fov.compute(player.x, player.y, 10, (x, y, r, visibility) => {
-        lightMap.set(map.key(x, y), visibility);
-    });
-
-    let glyphMap = new Map(); // map key to [char, fg, optional bg]
-    for (let entity of entities.values()) {
-        glyphMap.set(map.key(entity.x, entity.y), entityGlyph(entity.type));
-    }
+    let lightMap = computeLightMap(player, tileMap);
+    let glyphMap = computeGlyphMap(entities);
     
-    const mapColors = {
-        [false]: {[false]: "rgb(50, 50, 150)", [true]: "rgb(0, 0, 100)"},
-        [true]: {[false]: "rgb(200, 180, 50)", [true]: "rgb(130, 110, 50)"}
-    };
-    for (let y = 0; y < map.height; y++) {
-        for (let x = 0; x < map.width; x++) {
-            let lit = lightMap.get(map.key(x, y)) > 0.0,
-                wall = map.get(x, y) !== 0;
+    for (let y = 0; y < HEIGHT; y++) {
+        for (let x = 0; x < WIDTH; x++) {
+            let tile = tileMap.get(x, y);
+            if (!tile || !tile.explored) { continue; }
+            let lit = lightMap.get(x, y) > 0.0;
             let ch = ' ',
                 fg = "black",
-                bg = mapColors[lit][wall];
-            let glyph = glyphMap.get(map.key(x, y));
+                bg = mapColors[lit][tile.wall];
+            let glyph = glyphMap.get(x, y);
             if (glyph) {
                 ch = lit? glyph[0] : ch;
                 fg = glyph[1];
@@ -111,7 +134,7 @@ function handleKeyDown(event) {
             let [_, dx, dy] = action;
             let newX = player.x + dx,
                 newY = player.y + dy;
-            if (map.get(newX, newY) === 0) {
+            if (tileMap.get(newX, newY).walkable) {
                 player.x = newX;
                 player.y = newY;
             }
