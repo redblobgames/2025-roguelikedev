@@ -549,6 +549,64 @@ And hey, it works!
 
 [[./screenshots/8.png]]
 
+* Enemies
+
+Part 5 of the Python tutorial adds monsters to rooms.
+
+One of the things the Python tutorial uses is the Python =randint()= function. [[https://ondras.github.io/rot.js/manual/#rng][ROT.js's manual]] shows that it has =getUniform()=, which I can wrap to make a =randint()= function. However if you dig deeper, [[https://ondras.github.io/rot.js/doc/classes/_rng_.rng.html#getuniformint][ROT.js actually has the randint function]], called =getUniformInt()=. There seem to be a lot of things that /aren't covered in the manual/.
+
+I made a shortcut for it:
+
+#+begin_src js
+const randint = ROT.RNG.getUniformInt.bind(ROT.RNG);
+#+end_src
+
+and then used it for the monster creating function:
+
+#+begin_src js
+function createMonsters(room, maxMonstersPerRoom) {
+    let numMonsters = randint(0, maxMonstersPerRoom);
+    for (let i = 0; i < numMonsters; i++) {
+        let x = randint(room.getLeft(), room.getRight()),
+            y = randint(room.getTop(), room.getBottom());
+        if (!entityAt(x, y)) {
+            let type = randint(0, 3) === 0? 'troll' : 'orc';
+            createEntity(type, x, y);
+        }
+    }
+}
+#+end_src
+
+But what is a room? The ROT.js dungeon digger records room objects in addition to tiles. I stored these in the =tileMap= for now.
+
+#+begin_src js
+function createTileMap(width, height) {
+    let tileMap = createMap();
+    const digger = new ROT.Map.Digger(width, height);
+    digger.create(…);
+    tileMap.rooms = digger.getRooms();
+    tileMap.corridors = digger.getCorridors();
+    return tileMap;
+}
+#+end_src
+
+and then used them to make monsters in each room:
+
+#+begin_src js
+for (let room of tileMap.rooms) {
+    createMonsters(room, 3);
+}
+#+end_src
+
+Cool, it works! (Note: I disabled FOV for this screenshot)
+
+[[./screenshots/9.png]]
+
+Or … does it? Why are they all orcs?! I thought there must be a bug in my code, but no, it's just random luck. If I change the seed I get both trolls and orcs.
+
+[[./screenshots/10.png]]
+
+
 
 #+begin_export html
 <x:footer>
@@ -560,6 +618,6 @@ And hey, it works!
   <script src="roguelike-dev.js"/>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 01 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 05 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export

@@ -10,12 +10,15 @@
 
 /* global ROT */
 
+let DEBUG_ALL_EXPLORED = false;
+
 ROT.RNG.setSeed(127);
 const display = new ROT.Display({width: 60, height: 25, fontFamily: 'Roboto Mono'});
 document.getElementById("game").appendChild(display.getContainer());
 
 
-
+/** like python's randint */
+const randint = ROT.RNG.getUniformInt.bind(ROT.RNG);
 
 let entities = new Map();
 function createEntity(type, x, y) {
@@ -26,9 +29,29 @@ function createEntity(type, x, y) {
 }
 createEntity.id = 0;
 
-let player = createEntity('player', 1, 5);
-createEntity('troll', 24, 16);
+/** return the entity at (x,y) or null if there isn't one */
+function entityAt(x, y) {
+    for (let entity of entities.values()) {
+        if (entity.x === x && entity.y === y) {
+            return entity;
+        }
+    }
+    return null;
+}
 
+let player = createEntity('player', 1, 5);
+
+function createMonsters(room, maxMonstersPerRoom) {
+    let numMonsters = randint(0, maxMonstersPerRoom);
+    for (let i = 0; i < numMonsters; i++) {
+        let x = randint(room.getLeft(), room.getRight()),
+            y = randint(room.getTop(), room.getBottom());
+        if (!entityAt(x, y)) {
+            let type = randint(0, 3) === 0? 'troll' : 'orc';
+            createEntity(type, x, y);
+        }
+    }
+}
 
 function createMap() {
     function key(x, y) { return `${x},${y}`; }
@@ -50,10 +73,15 @@ function createTileMap(width, height) {
             explored: false,
         })
     );
+    tileMap.rooms = digger.getRooms();
+    tileMap.corridors = digger.getCorridors();
     return tileMap;
 }
 const WIDTH = 60, HEIGHT = 25;
 let tileMap = createTileMap(WIDTH, HEIGHT);
+for (let room of tileMap.rooms) {
+    createMonsters(room, 3);
+}
 
 const fov = new ROT.FOV.PreciseShadowcasting((x, y) => tileMap.has(x, y) && tileMap.get(x, y).walkable);
 
@@ -100,8 +128,8 @@ function draw() {
     for (let y = 0; y < HEIGHT; y++) {
         for (let x = 0; x < WIDTH; x++) {
             let tile = tileMap.get(x, y);
-            if (!tile || !tile.explored) { continue; }
-            let lit = lightMap.get(x, y) > 0.0;
+            if (!tile || (!DEBUG_ALL_EXPLORED && !tile.explored)) { continue; }
+            let lit = DEBUG_ALL_EXPLORED || lightMap.get(x, y) > 0.0;
             let ch = ' ',
                 fg = "black",
                 bg = mapColors[lit][tile.wall];
@@ -122,6 +150,7 @@ function handleKeys(keyCode) {
         [ROT.KEYS.VK_LEFT]:  () => ['move', -1, 0],
         [ROT.KEYS.VK_DOWN]:  () => ['move', 0, +1],
         [ROT.KEYS.VK_UP]:    () => ['move', 0, -1],
+        [ROT.KEYS.VK_O]:     () => ['toggle-debug'],
     };
     let action = actions[keyCode];
     return action ? action() : undefined;
@@ -130,7 +159,8 @@ function handleKeys(keyCode) {
 function handleKeyDown(event) {
     let action = handleKeys(event.keyCode);
     if (action) {
-        if (action[0] === 'move') {
+        switch (action[0]) {
+        case 'move': {
             let [_, dx, dy] = action;
             let newX = player.x + dx,
                 newY = player.y + dy;
@@ -138,10 +168,16 @@ function handleKeyDown(event) {
                 player.x = newX;
                 player.y = newY;
             }
-            draw();
-        } else {
+            break;
+        }
+        case 'toggle-debug': {
+            DEBUG_ALL_EXPLORED = !DEBUG_ALL_EXPLORED;
+            break;
+        }
+        default:
             throw `unhandled action ${action}`;
         }
+        draw();
         event.preventDefault();
     }
 }
