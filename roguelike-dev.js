@@ -85,15 +85,13 @@ for (let room of tileMap.rooms) {
 
 const fov = new ROT.FOV.PreciseShadowcasting((x, y) => tileMap.has(x, y) && tileMap.get(x, y).walkable);
 
-/** return [char, fg, optional bg] for a given entity */
-function entityGlyph(entityType) {
-    const visuals = {
-        player: ['@', "hsl(60, 100%, 70%)"],
-        troll: ['T', "hsl(120, 60%, 30%)"],
-        orc: ['o', "hsl(100, 30%, 40%)"],
-    };
-    return visuals[entityType];
-}
+/** table of entity properties per type */
+const ENTITY_PROPERTIES = {
+    player: {blocks: true, visuals: ['@', "hsl(60, 100%, 70%)"],},
+    troll: {blocks: true, visuals: ['T', "hsl(120, 60%, 30%)"],},
+    orc: {blocks: true, visuals: ['o', "hsl(100, 30%, 40%)"],},
+};
+
 
 function computeLightMap(center, tileMap) {
     let lightMap = createMap(); // 0.0–1.0
@@ -110,7 +108,7 @@ function computeLightMap(center, tileMap) {
 function computeGlyphMap(entities) {
     let glyphMap = createMap(); // [char, fg, optional bg]
     for (let entity of entities.values()) {
-        glyphMap.set(entity.x, entity.y, entityGlyph(entity.type));
+        glyphMap.set(entity.x, entity.y, ENTITY_PROPERTIES[entity.type].visuals);
     }
     return glyphMap;
 }
@@ -165,8 +163,14 @@ function handleKeyDown(event) {
             let newX = player.x + dx,
                 newY = player.y + dy;
             if (tileMap.get(newX, newY).walkable) {
-                player.x = newX;
-                player.y = newY;
+                let target = entityAt(newX, newY);
+                if (target && ENTITY_PROPERTIES[target.type].blocks) {
+                    console.log(`You kick the ${target.type} in the shins, much to its annoyance!`);
+                    // TODO: draw this to the screen
+                } else {
+                    player.x = newX;
+                    player.y = newY;
+                }
             }
             break;
         }

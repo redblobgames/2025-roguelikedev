@@ -606,13 +606,48 @@ Or … does it? Why are they all orcs?! I thought there must be a bug in my code
 
 [[./screenshots/10.png]]
 
+The next step is that they add a =blocks= flag to each Entity. I decided to make that a property of the entity /type/.
+
+#+begin_src js
+const ENTITY_PROPERTIES = {
+    player: {blocks: true, visuals: ['@', "hsl(60, 100%, 70%)"],},
+    troll: {blocks: true, visuals: ['T', "hsl(120, 60%, 30%)"],},
+    orc: {blocks: true, visuals: ['o', "hsl(100, 30%, 40%)"],},
+};
+#+end_src
+
+As I mentioned earlier, I'll often do something and then change how it works later. I'm replacing the =entityGlyph()= function with this table.
+
+I modified the =handleKeyDown()= function to check if there's already an entity there:
+
+#+begin_src js
+…
+    let newX = player.x + dx,
+        newY = player.y + dy;
+    if (tileMap.get(newX, newY).walkable) {
+        let target = entityAt(newX, newY);
+        if (target && ENTITY_PROPERTIES[target.type].blocks) {
+            console.log(`You kick the ${target.type} in the shins, much to its annoyance!`);
+            // TODO: draw this to the screen
+        } else {
+            player.x = newX;
+            player.y = newY;
+        }
+    }
+…
+#+end_src
+
+I tested this and it worked. Moving into a monster prints an message to the console.
+
+The next section in the Python tutorial sets up a state =PLAYER_TURN= and =ENEMY_TURN=. I didn't like the way it worked, because it will /ignore/ the player keypress during the enemy turn. I don't quite know what I want to do about it.
+
 
 
 #+begin_export html
 <x:footer>
   <style>
     #game canvas { display: block; margin: auto; }
-    .figure img { border: 2px solid #999; box-shadow: 0 1px 2px 2px rgba(0,0,0,0.2); }
+    .figure img { display: block; margin: auto; border: 2px solid #999; box-shadow: 0 1px 2px 2px rgba(0,0,0,0.2); }
   </style>
   <script src="third-party/rot.js"/>
   <script src="roguelike-dev.js"/>
