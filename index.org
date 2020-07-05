@@ -641,6 +641,27 @@ I tested this and it worked. Moving into a monster prints an message to the cons
 
 The next section in the Python tutorial sets up a state =PLAYER_TURN= and =ENEMY_TURN=. I didn't like the way it worked, because it will /ignore/ the player keypress during the enemy turn. I don't quite know what I want to do about it.
 
+I think for now I'll have the enemies move after each player move. I moved the above code into its own function:
+
+#+begin_src js
+function enemiesMove() {
+    for (let entity of entities) {
+        if (entity !== player) {
+            console.log(`The ${entity.type} ponders the meaning of its existence.`);
+        }
+    }
+}
+#+end_src
+
+Since my random number generator produced all orcs, I get a /lot/ of console messages:
+
+#+begin_example
+The orc ponders the meaning of its existence.
+#+end_example
+
+Great! Time to move on to the next part of the tutorial.
+
+* Combat
 
 
 #+begin_export html

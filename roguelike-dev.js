@@ -154,24 +154,37 @@ function handleKeys(keyCode) {
     return action ? action() : undefined;
 }
 
+function playerMoveBy(dx, dy) {
+    let newX = player.x + dx,
+        newY = player.y + dy;
+    if (tileMap.get(newX, newY).walkable) {
+        let target = entityAt(newX, newY);
+        if (target && ENTITY_PROPERTIES[target.type].blocks) {
+            console.log(`You kick the ${target.type} in the shins, much to its annoyance!`);
+            // TODO: draw this to the screen
+        } else {
+            player.x = newX;
+            player.y = newY;
+            enemiesMove();
+        }
+    }
+}
+
+function enemiesMove() {
+    for (let entity of entities.values()) {
+        if (entity !== player) {
+            console.log(`The ${entity.type} ponders the meaning of its existence.`);
+        }
+    }
+}
+
 function handleKeyDown(event) {
     let action = handleKeys(event.keyCode);
     if (action) {
         switch (action[0]) {
         case 'move': {
             let [_, dx, dy] = action;
-            let newX = player.x + dx,
-                newY = player.y + dy;
-            if (tileMap.get(newX, newY).walkable) {
-                let target = entityAt(newX, newY);
-                if (target && ENTITY_PROPERTIES[target.type].blocks) {
-                    console.log(`You kick the ${target.type} in the shins, much to its annoyance!`);
-                    // TODO: draw this to the screen
-                } else {
-                    player.x = newX;
-                    player.y = newY;
-                }
-            }
+            playerMoveBy(dx, dy);
             break;
         }
         case 'toggle-debug': {
