@@ -7,11 +7,10 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
 #+begin_export html
 <figure>
   <div id="game"/>
-  <div id="focus-reminder">click game to focus</div>
+  <pre id="messages"/>
+  <div id="instructions"/>
 </figure>
 #+end_export
-
-Arrow keys to move.
 
 Source code: [[href:roguelike-dev.js][roguelike-dev.js]]
 
@@ -68,7 +67,7 @@ HTML:
 
 #+begin_src xml
 <figure>
-  <div id="game"/>
+  <div id="game"></div>
   <div id="focus-reminder">click game to focus</div>
 </figure>
 #+end_src
@@ -659,7 +658,71 @@ Since my random number generator produced all orcs, I get a /lot/ of console mes
 The orc ponders the meaning of its existence.
 #+end_example
 
-Great! Time to move on to the next part of the tutorial.
+Great! Before I move on to the next part of the tutorial, I wanted to add a way to see the messages under the game screen.
+
+* Console
+
+I updated the UI to have an extra div for messages, and put the instructions box below it:
+
+#+begin_src xml
+<figure>
+  <div id="game"></div>
+  <pre id="messages"></pre>
+  <div id="instructions"/>
+</figure>
+#+end_src
+
+I gave it some style:
+
+#+begin_src css
+#messages {
+    box-sizing: border-box;
+    font-size: 0.8em;
+    height: 6em; /* see explanation below */
+    line-height: 1.0;
+    background: black;
+    color: white;
+    margin: 0;
+    padding: 0.5em 1em;
+    text-align: left;
+}
+#+end_src
+
+The size calculation was a little tricky. I want the height to be 5 lines tall. A line is typically =line-height= times =font-size=. I set the line height to 1.0 so it seems like the height will be 1.0 * 0.8em * 5 = 4em. But it's not! The css for =<pre>= em is relative to the =<pre>='s font size, except for =font-size: 0.8em= which is relative to the parent =<figure>='s font size. So it's really 1.0 * 1em = 5em. Plus, with =box-sizing: border-box= I need to include the size of the padding. Both the top and bottom padding are 0.5em here so that means the total height of the box is 6em.
+
+Ok, and here's the Javascript to print a line of text to the message area:
+
+#+begin_src js
+function print(message) {
+    const MAX_LINES = 5;
+    let messages = document.querySelector("#messages");
+    let lines = messages.textContent.split("\n");
+    lines.push(message);
+    while (lines.length > MAX_LINES) { lines.shift(); }
+    messages.textContent = lines.join("\n");
+}
+#+end_src
+
+And here's the updated code for the instructions box, which used to hide/show "Click game to focus" but now replaces that text with "Arrow keys to move":
+
+#+begin_src js
+function setupKeyboardHandler(display, handler) {
+    const canvas = display.getContainer();
+    const instructions = document.getElementById('instructions');
+    canvas.setAttribute('tabindex', "1");
+    canvas.addEventListener('keydown', handleKeyDown);
+    canvas.addEventListener('blur', () => { instructions.textContent = "Click game for keyboard focus"; });
+    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move"; });
+    canvas.focus();
+}
+#+end_src
+
+Here's what it looks like:
+
+[[./screenshots/11.png]]
+
+Back to the Python tutorial.
+
 
 * Combat
 
@@ -667,8 +730,18 @@ Great! Time to move on to the next part of the tutorial.
 #+begin_export html
 <x:footer>
   <style>
-    #game canvas { display: block; margin: auto; }
-    .figure img { display: block; margin: auto; border: 2px solid #999; box-shadow: 0 1px 2px 2px rgba(0,0,0,0.2); }
+      #game canvas { display: block; margin: auto; }
+      .figure img { display: block; margin: auto; border: 2px solid #999; box-shadow: 0 1px 2px 2px rgba(0,0,0,0.2); }
+      #messages {
+          font-size: 0.8em;
+          height: 6em;
+          line-height: 1.0;
+          background: black;
+          color: white;
+          margin: 0;
+          padding: 0.5em 1em;
+          text-align: left;
+      }
   </style>
   <script src="third-party/rot.js"/>
   <script src="roguelike-dev.js"/>

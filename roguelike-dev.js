@@ -20,6 +20,17 @@ document.getElementById("game").appendChild(display.getContainer());
 /** like python's randint */
 const randint = ROT.RNG.getUniformInt.bind(ROT.RNG);
 
+
+/** console messages */
+function print(message) {
+    const MAX_LINES = 5;
+    let messages = document.querySelector("#messages");
+    let lines = messages.textContent.split("\n");
+    lines.push(message);
+    while (lines.length > MAX_LINES) { lines.shift(); }
+    messages.textContent = lines.join("\n");
+}
+
 let entities = new Map();
 function createEntity(type, x, y) {
     let id = ++createEntity.id;
@@ -160,8 +171,8 @@ function playerMoveBy(dx, dy) {
     if (tileMap.get(newX, newY).walkable) {
         let target = entityAt(newX, newY);
         if (target && ENTITY_PROPERTIES[target.type].blocks) {
-            console.log(`You kick the ${target.type} in the shins, much to its annoyance!`);
-            // TODO: draw this to the screen
+            print(`You kick the ${target.type} in the shins, much to its annoyance!`);
+            // TODO: enemies move too
         } else {
             player.x = newX;
             player.y = newY;
@@ -173,7 +184,7 @@ function playerMoveBy(dx, dy) {
 function enemiesMove() {
     for (let entity of entities.values()) {
         if (entity !== player) {
-            console.log(`The ${entity.type} ponders the meaning of its existence.`);
+            print(`The ${entity.type} ponders the meaning of its existence.`);
         }
     }
 }
@@ -201,11 +212,11 @@ function handleKeyDown(event) {
 
 function setupKeyboardHandler(display, handler) {
     const canvas = display.getContainer();
-    const focusReminder = document.getElementById('focus-reminder');
+    const instructions = document.getElementById('instructions');
     canvas.setAttribute('tabindex', "1");
     canvas.addEventListener('keydown', handleKeyDown);
-    canvas.addEventListener('blur', () => { focusReminder.style.visibility = 'visible'; });
-    canvas.addEventListener('focus', () => { focusReminder.style.visibility = 'hidden'; });
+    canvas.addEventListener('blur', () => { instructions.textContent = "Click game for keyboard focus"; });
+    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move"; });
     canvas.focus();
 }
 
