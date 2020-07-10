@@ -31,10 +31,18 @@ function print(message) {
     messages.textContent = lines.join("\n");
 }
 
+/** Entity properties that are shared among all the instances of the type */
+const ENTITY_PROPERTIES = {
+    player: { blocks: true, visuals: ['@', "hsl(60, 100%, 70%)"], },
+    troll:  { blocks: true, visuals: ['T', "hsl(120, 60%, 30%)"], },
+    orc:    { blocks: true, visuals: ['o', "hsl(100, 30%, 40%)"], },
+};
+
 let entities = new Map();
 function createEntity(type, x, y) {
     let id = ++createEntity.id;
-    let entity = { id, type, x, y };
+    let entity = Object.create(ENTITY_PROPERTIES[type]);
+    Object.assign(entity, { id, type, x, y });
     entities.set(id, entity);
     return entity;
 }
@@ -96,13 +104,6 @@ for (let room of tileMap.rooms) {
 
 const fov = new ROT.FOV.PreciseShadowcasting((x, y) => tileMap.has(x, y) && tileMap.get(x, y).walkable);
 
-/** table of entity properties per type */
-const ENTITY_PROPERTIES = {
-    player: {blocks: true, visuals: ['@', "hsl(60, 100%, 70%)"],},
-    troll: {blocks: true, visuals: ['T', "hsl(120, 60%, 30%)"],},
-    orc: {blocks: true, visuals: ['o', "hsl(100, 30%, 40%)"],},
-};
-
 
 function computeLightMap(center, tileMap) {
     let lightMap = createMap(); // 0.0–1.0
@@ -119,7 +120,7 @@ function computeLightMap(center, tileMap) {
 function computeGlyphMap(entities) {
     let glyphMap = createMap(); // [char, fg, optional bg]
     for (let entity of entities.values()) {
-        glyphMap.set(entity.x, entity.y, ENTITY_PROPERTIES[entity.type].visuals);
+        glyphMap.set(entity.x, entity.y, entity.visuals);
     }
     return glyphMap;
 }
@@ -170,7 +171,7 @@ function playerMoveBy(dx, dy) {
         newY = player.y + dy;
     if (tileMap.get(newX, newY).walkable) {
         let target = entityAt(newX, newY);
-        if (target && ENTITY_PROPERTIES[target.type].blocks) {
+        if (target && target.blocks) {
             print(`You kick the ${target.type} in the shins, much to its annoyance!`);
             // TODO: enemies move too
         } else {

@@ -726,6 +726,16 @@ Back to the Python tutorial.
 
 * Combat
 
+[[http://rogueliketutorials.com/tutorials/tcod/part-6/][Part 6]] of the Python roguelike tutorial adds a “fighter” component with hp, max_hp, defense, power, and an “ai” component that tells the monster how to move.
+
+My own coding style, as you may have noticed from earlier on the page, is to separate out “static” properties into their own structure. I want to be able to save the game, change the static properties, and load the game to get the new values. I treat differently properties like /position/ and /color/. The position is a “per object” property of the troll. It is different for each troll. The color is a “class” property of the troll. The color is the same for all trolls. These static class properties went into =ENTITY_PROPERTIES=. In Javascript I can have the object point to the static properties with the prototype pointer.
+
+I was going to treat =defense= and =power= and =max_hp= as static properties, and =hp= as a per object property, but looking ahead in the tutorial, it looks like =defense= and =power= and =max_hp= all become computed properties, so maybe this is a premature design decision.
+
+I'm going to see how far I can get without adding an =owner= pointer. But again, looking ahead in the tutorial, it seems like =owner= gets used for the fighter component to look at the inventory of the entity that's carrying it. Hm.
+
+
+
 
 #+begin_export html
 <x:footer>
@@ -747,6 +757,6 @@ Back to the Python tutorial.
   <script src="roguelike-dev.js"/>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 05 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 10 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export
