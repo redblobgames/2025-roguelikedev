@@ -39,10 +39,10 @@ const ENTITY_PROPERTIES = {
 };
 
 let entities = new Map();
-function createEntity(type, x, y) {
+function createEntity(type, x, y, properties={}) {
     let id = ++createEntity.id;
     let entity = Object.create(ENTITY_PROPERTIES[type]);
-    Object.assign(entity, { id, type, x, y });
+    Object.assign(entity, { id, type, x, y, ...properties });
     entities.set(id, entity);
     return entity;
 }
@@ -58,7 +58,7 @@ function entityAt(x, y) {
     return null;
 }
 
-let player = createEntity('player', 1, 5);
+let player = createEntity('player', 1, 5, {hp: 30, defense: 2, power: 5});
 
 function createMonsters(room, maxMonstersPerRoom) {
     let numMonsters = randint(0, maxMonstersPerRoom);
@@ -66,8 +66,10 @@ function createMonsters(room, maxMonstersPerRoom) {
         let x = randint(room.getLeft(), room.getRight()),
             y = randint(room.getTop(), room.getBottom());
         if (!entityAt(x, y)) {
-            let type = randint(0, 3) === 0? 'troll' : 'orc';
-            createEntity(type, x, y);
+            let [type, props] = randint(0, 3) === 0
+                ? ['troll', {hp: 16, defense: 1, power: 4}]
+                : ['orc',   {hp: 10, defense: 0, power: 3}];
+            createEntity(type, x, y, props);
         }
     }
 }
@@ -166,13 +168,28 @@ function handleKeys(keyCode) {
     return action ? action() : undefined;
 }
 
+function takeDamage(target, amount) {
+    target.hp -= amount;
+    // TODO: handle death
+}
+
+function attack(attacker, defender) {
+    let damage = attacker.power - defender.defense;
+    if (damage > 0) {
+        takeDamage(defender, damage);
+        print(`${attacker.type} attacks ${defender.type} for ${damage} hit points.`);
+    } else {
+        print(`${attacker.type} attacks ${defender.type} but does no damage.`);
+    }
+}
+
 function playerMoveBy(dx, dy) {
     let newX = player.x + dx,
         newY = player.y + dy;
     if (tileMap.get(newX, newY).walkable) {
         let target = entityAt(newX, newY);
-        if (target && target.blocks) {
-            print(`You kick the ${target.type} in the shins, much to its annoyance!`);
+        if (target && target.hp > 0) {
+            attack(player, target);
             // TODO: enemies move too
         } else {
             player.x = newX;
@@ -184,6 +201,7 @@ function playerMoveBy(dx, dy) {
 
 function enemiesMove() {
     for (let entity of entities.values()) {
+        // TODO: entity.ai tells us what to do
         if (entity !== player) {
             print(`The ${entity.type} ponders the meaning of its existence.`);
         }

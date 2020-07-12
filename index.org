@@ -188,9 +188,9 @@ I'm going to skip these two.
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-2/][Part 2]] of the tutorial covers entities. My design differs slightly from the tutorial:
 
-1. I include only "world" data in the entity. This is data about the entity in the world, but /not/ the data about the entity being drawn.
+1. I include only "instance" data in the entity, such as position and health, but not "static" data such as its color.
 2. I include an entity type string instead. Normally this is "implicit" information in that each object belongs to a class. I prefer making /game/ classes explicit.
-3. I also don't put methods in this object. I've had too many methods that don't "belong" in any one class, so I prefer to leave them as free functions.
+3. I also don't put methods in this object. I've had too many methods that don't "belong" in any one class, so I prefer to leave them as free functions. My goal is to have the object serializable as JSON.
 4. I give each entity an id. I find that useful in debugging. It may come in handy later for serialization or events or logging.
 
 #+begin_src js
@@ -662,7 +662,7 @@ Great! Before I move on to the next part of the tutorial, I wanted to add a way 
 
 * Console
 
-I updated the UI to have an extra div for messages, and put the instructions box below it:
+I updated the UI to have an extra div for messages, and put the instructions box below it. This is covered in the Python tutorial part 7, but I implemented it earlier:
 
 #+begin_src xml
 <figure>
@@ -728,12 +728,20 @@ Back to the Python tutorial.
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-6/][Part 6]] of the Python roguelike tutorial adds a “fighter” component with hp, max_hp, defense, power, and an “ai” component that tells the monster how to move.
 
-My own coding style, as you may have noticed from earlier on the page, is to separate out “static” properties into their own structure. I want to be able to save the game, change the static properties, and load the game to get the new values. I treat differently properties like /position/ and /color/. The position is a “per object” property of the troll. It is different for each troll. The color is a “class” property of the troll. The color is the same for all trolls. These static class properties went into =ENTITY_PROPERTIES=. In Javascript I can have the object point to the static properties with the prototype pointer.
+This is the part of the tutorial where the real game logic starts. My goal is to implement the /features/ from the Python tutorial, but not necessarily with the same code structure.
 
-I was going to treat =defense= and =power= and =max_hp= as static properties, and =hp= as a per object property, but looking ahead in the tutorial, it looks like =defense= and =power= and =max_hp= all become computed properties, so maybe this is a premature design decision.
+My own coding style is to prefer separating “static” from “instance” data and functions. Static properties are part of /the game/. Instance properties are part of /running the game/. For example, the troll's color is a static property of the troll. The color is decided before any trolls exist. It is the /same/ for all trolls, but it might be /different/ if I change the program code. A position is an instance property of the troll. It is /different/ for each troll, but it'll be the /same/ if I load the save file in new version of the game. 
 
-I'm going to see how far I can get without adding an =owner= pointer. But again, looking ahead in the tutorial, it seems like =owner= gets used for the fighter component to look at the inventory of the entity that's carrying it. Hm.
+I also prefer to use “free functions” (static) and “plain old data” (instance) instead of combining them into classes. It makes things like persistence and multiplayer easier for me to implement. I'm going to do this not only for the entity but also the fighter and ai components. 
 
+For the entities, I put the static properties into a =ENTITY_PROPERTIES= lookup table, and I used Javascript prototype inheritance to attach it to each entity.
+
+For the fighter and AI, I decided to look ahead in the tutorial to see how they will get used. 
+
+- For the fighter, I was planning to treat =defense= and =power= and =max_hp= as static properties, and =hp= as a per object property, but it looks like =defense= and =power= and =max_hp= all become computed properties, so maybe this is a premature design decision. The =attack()= function seems to be the same for all entities so I think I'll leave it out of the entity/component (in ECS it'd be a "system"). I'm seeing no particular value in making this a separate component right now. 
+- For the AI, it's either a basic monster that moves towards the player, or a confused monster that moves randomly for some number of turns and then reverts to the previous AI behavior. I think I could treat that as a function, but functions don't work well with persistence, so I'm going to treat it as data that has a =type= field, like I did with entities.
+
+I'm going to see how far I can get without adding an =owner= pointer. I strongly prefer not to have it, because it leads to a circularity in the data, which will make persistence more complicated. In an ECS this circularity would be broken by storing an entity id instead of a pointer to the entity object, but I'm not using an ECS here.
 
 
 
@@ -757,6 +765,6 @@ I'm going to see how far I can get without adding an =owner= pointer. But again,
   <script src="roguelike-dev.js"/>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 10 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 12 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export
