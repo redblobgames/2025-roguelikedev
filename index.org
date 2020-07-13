@@ -11,7 +11,7 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
     <div id="health-bar"/>
     <div id="health-text"/>
   </div>
-  <pre id="messages"/>
+  <div id="messages"/>
   <div id="instructions"/>
 </figure>
 #+end_export
@@ -785,6 +785,17 @@ I already implemented the message area earlier. It's in HTML instead of in ROT.j
 
 [[./screenshots/14.png]]
 
+I also improved the message area:
+
+1. added color by switching from =<pre>= to a =<div>= with =<div>= children, each with a css =color: …= set
+2. got word-wrap for free by making this switch!
+3. added indentation by applying css =margin-left: 1em; indent-text: -1em;= so that a message that wraps will get subsequent lines indented
+4. added scrolling by setting css =overflow-x: hidden; overflow-y: scroll= but hid the scrollbar using =scrollbar-width: none= ([[https://caniuse.com/#search=scrollbar-width][Firefox supports the standard]]) and =::-webkit-scrollbar { width: 0 }= (Chrome and Safari naturally have their own non-standard approach)
+5. added a spacing between the messages with =margin-bottom: 0.25em= so that the line spacing within messages is smaller than between messages
+
+[[./screenshots/15.png]]
+
+
 
 #+begin_export html
 <x:footer>
@@ -809,14 +820,24 @@ I already implemented the message area earlier. It's in HTML instead of in ROT.j
           margin: auto;
           padding: 0.5em 1em;
           border: none;
-          white-space: pre-wrap;
           text-align: left;
+          font-family: var(--monospace), monospace;
           font-size: 0.8em;
           height: 8em;
           line-height: 1.0;
           background: hsl(60, 10%, 10%);
           color: white;
           overflow-x: hidden;
+          overflow-y: scroll;
+          scrollbar-width: none; /* firefox supports the standard */
+      }
+      #messages::-webkit-scrollbar { /* but chrome, safari do not, naturally */
+          width: 0;
+      }
+      #messages > div {
+          margin-left: 1em;
+          margin-bottom: 0.25em;
+          text-indent: -1em;
       }
       #status-bar {
           width: 600px;
@@ -831,13 +852,13 @@ I already implemented the message area earlier. It's in HTML instead of in ROT.j
       }
       #health-text {
           grid-area: all;
-          font-family: sans-serif;
+          font-family: var(--sans-serif), sans-serif;
           color: white;
           text-align: center;
       }
   </style>
-  <script src="third-party/rot.js"/>
-  <script src="roguelike-dev.js"/>
+  <script src="third-party/rot.js"></script>
+  <script src="roguelike-dev.js"></script>
 
   Created 18 Jun 2020; &#160;
   <!-- hhmts start -->Last modified: 13 Jul 2020<!-- hhmts end -->

@@ -17,20 +17,37 @@ const display = new ROT.Display({width: 60, height: 25, fontFamily: 'Roboto Mono
 document.getElementById("game").appendChild(display.getContainer());
 
 
+/** theme */
+const COLORS = {
+    welcomeText:  "hsl(220,  50%, 70%)",
+    playerAttack: "hsl( 30,  10%, 80%)",
+    playerDie:    "hsl(  0, 100%, 50%)",
+    enemyAttack:  "hsl(  0,  50%, 80%)",
+    enemyDie:     "hsl(150,  30%, 70%)",
+};
+
 /** like python's randint */
 const randint = ROT.RNG.getUniformInt.bind(ROT.RNG);
 
 
+let AAA;
 /** console messages */
-function print(message) {
+const print = (() => {
     const MAX_LINES = 25;
     let messages = document.querySelector("#messages");
-    let lines = messages.textContent.split("\n");
-    lines.push(message);
-    while (lines.length > MAX_LINES) { lines.shift(); }
-    messages.textContent = lines.join("\n");
-    messages.scrollTop = messages.scrollHeight;
-}
+    return function(message, color) {
+        let line = document.createElement('div');
+        line.textContent = message;
+        line.style.color = color;
+        AAA = line;
+        console.log(message, color, line);
+        messages.appendChild(line);
+        while (messages.children.length > MAX_LINES) {
+            messages.removeChild(messages.children[0]);
+        }
+        messages.scrollTop = messages.scrollHeight;
+    };
+})();
 
 /** Entity properties that are shared among all the instances of the type */
 const ENTITY_PROPERTIES = {
@@ -185,7 +202,7 @@ function handleKeys(keyCode) {
 function takeDamage(target, amount) {
     target.hp -= amount;
     if (target.hp <= 0) {
-        print(`${target.name} dies!`);
+        print(`${target.name} dies!`, COLORS.enemyDie);
         target.dead = true;
         target.type = 'corpse';
         target.name = `${target.name}'s corpse`;
@@ -195,11 +212,12 @@ function takeDamage(target, amount) {
 
 function attack(attacker, defender) {
     let damage = attacker.power - defender.defense;
+    let color = attacker.id === player.id? COLORS.playerAttack : COLORS.enemyAttack;
     if (damage > 0) {
-        print(`${attacker.name} attacks ${defender.name} for ${damage} hit points.`);
+        print(`${attacker.name} attacks ${defender.name} for ${damage} hit points.`, color);
         takeDamage(defender, damage);
     } else {
-        print(`${attacker.name} attacks ${defender.name} but does no damage.`);
+        print(`${attacker.name} attacks ${defender.name} but does no damage.`, color);
     }
 }
 
@@ -261,7 +279,7 @@ function enemiesMove() {
 function handleKeyDown(event) {
     let action = handleKeys(event.keyCode);
     if (player.dead) {
-        print("You are dead.");
+        print("You are dead.", COLORS.playerDie);
         return;
     }
     if (action) {
@@ -293,6 +311,6 @@ function setupKeyboardHandler(display, handler) {
     canvas.focus();
 }
 
-print("Hello and welcome, adventurer, to yet another dungeon!");
+print("Hello and welcome, adventurer, to yet another dungeon!", COLORS.welcomeText);
 draw();
 setupKeyboardHandler(display, handleKeyDown);
