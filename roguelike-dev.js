@@ -57,10 +57,10 @@ function createEntity(type, x, y, properties={}) {
 }
 createEntity.id = 0;
 
-/** return the entity at (x,y) or null if there isn't one */
-function entityAt(x, y) {
+/** return a blocking entity at (x,y) or null if there isn't one */
+function blockingEntityAt(x, y) {
     for (let entity of entities.values()) {
-        if (entity.x === x && entity.y === y) {
+        if (entity.blocks && entity.x === x && entity.y === y) {
             return entity;
         }
     }
@@ -74,7 +74,7 @@ function createMonsters(room, maxMonstersPerRoom) {
     for (let i = 0; i < numMonsters; i++) {
         let x = randint(room.getLeft(), room.getRight()),
             y = randint(room.getTop(), room.getBottom());
-        if (!entityAt(x, y)) {
+        if (!blockingEntityAt(x, y)) {
             let ai = {behavior: 'move_to_player'};
             let [type, props] = randint(0, 3) === 0
                 ? ['troll', {hp: 16, defense: 1, power: 4, ai}]
@@ -203,8 +203,8 @@ function playerMoveBy(dx, dy) {
     let newX = player.x + dx,
         newY = player.y + dy;
     if (tileMap.get(newX, newY).walkable) {
-        let target = entityAt(newX, newY);
-        if (target && !target.dead) {
+        let target = blockingEntityAt(newX, newY);
+        if (target) {
             attack(player, target);
         } else {
             player.x = newX;
@@ -239,7 +239,7 @@ function enemiesMove() {
             }
             let newX = entity.x + stepx, newY = entity.y + stepy;
             if (tileMap.get(newX, newY).walkable) {
-                let target = entityAt(newX, newY);
+                let target = blockingEntityAt(newX, newY);
                 if (target && target.id === player.id) {
                     attack(entity, player);
                 } else if (target) {
