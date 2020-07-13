@@ -7,6 +7,10 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
 #+begin_export html
 <figure>
   <div id="game"/>
+  <div id="status-bar">
+    <div id="health-bar"/>
+    <div id="health-text"/>
+  </div>
   <pre id="messages"/>
   <div id="instructions"/>
 </figure>
@@ -769,28 +773,73 @@ It's starting to come together!
 
 [[./screenshots/13.png]]
 
+* Health bar
+
+[[http://rogueliketutorials.com/tutorials/tcod/part-7/][Part 7]] of the Python tutorial covers three topics:
+
+1. health bar
+2. message area
+3. entity info on mouseover
+
+I already implemented the message area earlier. It's in HTML instead of in ROT.js. I'm going to implement the health bar in HTML as well.
+
+[[./screenshots/14.png]]
+
 
 #+begin_export html
 <x:footer>
   <style>
-      #game canvas { display: block; margin: auto; }
-      .figure img { display: block; margin: auto; border: 2px solid #999; box-shadow: 0 1px 2px 2px rgba(0,0,0,0.2); }
+      .figure img { 
+          display: block; 
+          margin: auto; 
+          border: 2px solid #999; 
+          box-shadow: 0 1px 2px 2px rgba(0,0,0,0.2); 
+      }
+      #game canvas { 
+          display: block;
+          margin: auto;
+          opacity: 0.5;
+      }
+      #game canvas:focus {
+          outline: none;
+          opacity: 1.0;
+      }
       #messages {
-          font-size: 0.8em;
-          height: 6em;
-          line-height: 1.0;
-          background: black;
-          color: white;
-          margin: 0;
+          width: 600px;
+          margin: auto;
           padding: 0.5em 1em;
+          border: none;
+          white-space: pre-wrap;
           text-align: left;
-          overflow: hidden;
+          font-size: 0.8em;
+          height: 8em;
+          line-height: 1.0;
+          background: hsl(60, 10%, 10%);
+          color: white;
+          overflow-x: hidden;
+      }
+      #status-bar {
+          width: 600px;
+          margin: auto;
+          display: grid;
+          grid-template-areas: "all";
+          background: hsl(0, 50%, 20%);
+      }
+      #health-bar {
+          grid-area: all;
+          background: hsl(200, 50%, 40%);
+      }
+      #health-text {
+          grid-area: all;
+          font-family: sans-serif;
+          color: white;
+          text-align: center;
       }
   </style>
   <script src="third-party/rot.js"/>
   <script src="roguelike-dev.js"/>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 12 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 13 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export

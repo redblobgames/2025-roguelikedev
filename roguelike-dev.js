@@ -23,12 +23,13 @@ const randint = ROT.RNG.getUniformInt.bind(ROT.RNG);
 
 /** console messages */
 function print(message) {
-    const MAX_LINES = 5;
+    const MAX_LINES = 25;
     let messages = document.querySelector("#messages");
     let lines = messages.textContent.split("\n");
     lines.push(message);
     while (lines.length > MAX_LINES) { lines.shift(); }
     messages.textContent = lines.join("\n");
+    messages.scrollTop = messages.scrollHeight;
 }
 
 /** Entity properties that are shared among all the instances of the type */
@@ -67,7 +68,7 @@ function blockingEntityAt(x, y) {
     return null;
 }
 
-let player = createEntity('player', 1, 5, {hp: 30, defense: 2, power: 5});
+let player = createEntity('player', 1, 5, {hp: 30, max_hp: 30, defense: 2, power: 5});
 
 function createMonsters(room, maxMonstersPerRoom) {
     let numMonsters = randint(0, maxMonstersPerRoom);
@@ -77,8 +78,8 @@ function createMonsters(room, maxMonstersPerRoom) {
         if (!blockingEntityAt(x, y)) {
             let ai = {behavior: 'move_to_player'};
             let [type, props] = randint(0, 3) === 0
-                ? ['troll', {hp: 16, defense: 1, power: 4, ai}]
-                : ['orc',   {hp: 10, defense: 0, power: 3, ai}];
+                ? ['troll', {hp: 16, max_hp: 16, defense: 1, power: 4, ai}]
+                : ['orc',   {hp: 10, max_hp: 10, defense: 0, power: 3, ai}];
             createEntity(type, x, y, props);
         }
     }
@@ -144,6 +145,9 @@ const mapColors = {
 function draw() {
     display.clear();
 
+    document.querySelector("#health-bar").style.width = `${Math.ceil(100*player.hp/player.max_hp)}%`;
+    document.querySelector("#health-text").textContent = ` HP: ${player.hp} / ${player.max_hp}`;
+    
     let lightMap = computeLightMap(player, tileMap);
     let glyphMap = computeGlyphMap(entities);
     
@@ -289,5 +293,6 @@ function setupKeyboardHandler(display, handler) {
     canvas.focus();
 }
 
+print("Hello and welcome, adventurer, to yet another dungeon!");
 draw();
 setupKeyboardHandler(display, handleKeyDown);
