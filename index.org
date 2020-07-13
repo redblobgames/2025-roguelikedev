@@ -743,7 +743,23 @@ For the fighter and AI, I decided to look ahead in the tutorial to see how they 
 
 I'm going to see how far I can get without adding an =owner= pointer. I strongly prefer not to have it, because it leads to a circularity in the data, which will make persistence more complicated. In an ECS this circularity would be broken by storing an entity id instead of a pointer to the entity object, but I'm not using an ECS here.
 
+Here's an example of a top level function that's not a method of either the attacker or defender:
 
+#+begin_src js
+function attack(attacker, defender) {
+    let damage = attacker.power - defender.defense;
+    if (damage > 0) {
+        takeDamage(defender, damage);
+        print(`${attacker.type} attacks ${defender.type} for ${damage} hit points.`);
+    } else {
+        print(`${attacker.type} attacks ${defender.type} but does no damage.`);
+    }
+}
+#+end_src
+
+[[./screenshots/12.png]]
+
+I added the fighter and ai components, but not in the same way the Python tutorial implemented them. I'll refactor later.
 
 #+begin_export html
 <x:footer>
@@ -759,6 +775,7 @@ I'm going to see how far I can get without adding an =owner= pointer. I strongly
           margin: 0;
           padding: 0.5em 1em;
           text-align: left;
+          overflow: hidden;
       }
   </style>
   <script src="third-party/rot.js"/>

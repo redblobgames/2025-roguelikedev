@@ -66,9 +66,10 @@ function createMonsters(room, maxMonstersPerRoom) {
         let x = randint(room.getLeft(), room.getRight()),
             y = randint(room.getTop(), room.getBottom());
         if (!entityAt(x, y)) {
+            let ai = {behavior: 'move_to_player'};
             let [type, props] = randint(0, 3) === 0
-                ? ['troll', {hp: 16, defense: 1, power: 4}]
-                : ['orc',   {hp: 10, defense: 0, power: 3}];
+                ? ['troll', {hp: 16, defense: 1, power: 4, ai}]
+                : ['orc',   {hp: 10, defense: 0, power: 3, ai}];
             createEntity(type, x, y, props);
         }
     }
@@ -170,7 +171,10 @@ function handleKeys(keyCode) {
 
 function takeDamage(target, amount) {
     target.hp -= amount;
-    // TODO: handle death
+    if (target.hp <= 0) {
+        target.dead = true;
+        print(`${target.type} dies!`);
+    }
 }
 
 function attack(attacker, defender) {
@@ -188,29 +192,64 @@ function playerMoveBy(dx, dy) {
         newY = player.y + dy;
     if (tileMap.get(newX, newY).walkable) {
         let target = entityAt(newX, newY);
-        if (target && target.hp > 0) {
+        if (target && !target.dead) {
             attack(player, target);
-            // TODO: enemies move too
         } else {
             player.x = newX;
             player.y = newY;
-            enemiesMove();
         }
+        enemiesMove();
     }
 }
 
 function enemiesMove() {
+    let lightMap = computeLightMap(player, tileMap);
     for (let entity of entities.values()) {
-        // TODO: entity.ai tells us what to do
-        if (entity !== player) {
-            print(`The ${entity.type} ponders the meaning of its existence.`);
+        if (!entity.dead && entity.ai && entity.ai.behavior === 'move_to_player') {
+            if (!(lightMap.get(entity.x, entity.y) > 0.0)) {
+                // The player can't see the monster, so the monster
+                // can't see the player, so the monster doesn't move
+                continue;
+            }
+            if (entity.x === player.x && entity.y === player.y) {
+                throw "Invariant broken: monster and player are in same location";
+            }
+            
+            let dx = player.x - entity.x,
+                dy = player.y - entity.y;
+
+            // Pick either vertical or horizontal movement randomly
+            let stepx = 0, stepy = 0;
+            if (randint(1, Math.abs(dx) + Math.abs(dy)) <= Math.abs(dx)) {
+                stepx = dx / Math.abs(dx);
+            } else {
+                stepy = dy / Math.abs(dy);
+            }
+            let newX = entity.x + stepx, newY = entity.y + stepy;
+            if (tileMap.get(newX, newY).walkable) {
+                let target = entityAt(newX, newY);
+                if (target && target.id === player.id) {
+                    attack(entity, player);
+                } else if (target) {
+                    // another monster there; can't move
+                } else {
+                    // take a step
+                    entity.x = newX;
+                    entity.y = newY;
+                }
+            }
         }
     }
 }
 
 function handleKeyDown(event) {
     let action = handleKeys(event.keyCode);
+    if (player.dead) {
+        print("You are dead.");
+        return;
+    }
     if (action) {
+        event.preventDefault();
         switch (action[0]) {
         case 'move': {
             let [_, dx, dy] = action;
@@ -225,7 +264,6 @@ function handleKeyDown(event) {
             throw `unhandled action ${action}`;
         }
         draw();
-        event.preventDefault();
     }
 }
 
