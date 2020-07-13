@@ -839,6 +839,12 @@ I also improved the message area:
           margin-bottom: 0.25em;
           text-indent: -1em;
       }
+      #messages > div.welcome       { color : hsl(220,  50%,  70%); }
+      #messages > div.player-attack { color : hsl( 30,  10%,  80%); }
+      #messages > div.player-die    { color : hsl(  0, 100%,  50%); }
+      #messages > div.enemy-attack  { color : hsl(  0,  50%,  80%); }
+      #messages > div.enemy-die     { color : hsl(150,  30%,  70%); }
+
       #status-bar {
           width: 600px;
           margin: auto;
