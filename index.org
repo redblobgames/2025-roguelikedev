@@ -761,6 +761,15 @@ function attack(attacker, defender) {
 
 I added the fighter and ai components, but not in the same way the Python tutorial implemented them. I'll refactor later.
 
+Then I implemented rendering order as a static property of each entity.
+
+Then I worked on handling dead bodies. I change their =type= to =corpse= to get them to switch all static properties (=blocks=, character, color, render order) at once.
+
+It's starting to come together!
+
+[[./screenshots/13.png]]
+
+
 #+begin_export html
 <x:footer>
   <style>

@@ -33,15 +33,24 @@ function print(message) {
 
 /** Entity properties that are shared among all the instances of the type */
 const ENTITY_PROPERTIES = {
-    player: { blocks: true, visuals: ['@', "hsl(60, 100%, 70%)"], },
-    troll:  { blocks: true, visuals: ['T', "hsl(120, 60%, 30%)"], },
-    orc:    { blocks: true, visuals: ['o', "hsl(100, 30%, 40%)"], },
+    player: { blocks: true,  render_order: 9, visuals: ['@', "hsl(60, 100%, 70%)"], },
+    troll:  { blocks: true,  render_order: 6, visuals: ['T', "hsl(120, 60%, 30%)"], },
+    orc:    { blocks: true,  render_order: 6, visuals: ['o', "hsl(100, 30%, 40%)"], },
+    corpse: { blocks: false, render_order: 0, visuals: ['%', "darkred"], },
+};
+/* always use the current value of 'type' to get the entity properties,
+    so that we can change the object type later (e.g. to 'corpse') */
+const entity_prototype = {
+    get blocks() { return ENTITY_PROPERTIES[this.type].blocks; },
+    get visuals() { return ENTITY_PROPERTIES[this.type].visuals; },
+    get render_order() { return ENTITY_PROPERTIES[this.type].render_order; },
 };
 
 let entities = new Map();
 function createEntity(type, x, y, properties={}) {
     let id = ++createEntity.id;
-    let entity = Object.create(ENTITY_PROPERTIES[type]);
+    let entity = Object.create(entity_prototype);
+    entity.name = type;
     Object.assign(entity, { id, type, x, y, ...properties });
     entities.set(id, entity);
     return entity;
@@ -122,9 +131,9 @@ function computeLightMap(center, tileMap) {
 
 function computeGlyphMap(entities) {
     let glyphMap = createMap(); // [char, fg, optional bg]
-    for (let entity of entities.values()) {
-        glyphMap.set(entity.x, entity.y, entity.visuals);
-    }
+    entities = Array.from(entities.values());
+    entities.sort((a, b) => a.render_order - b.render_order);
+    entities.forEach(e => glyphMap.set(e.x, e.y, e.visuals));
     return glyphMap;
 }
 
@@ -172,18 +181,21 @@ function handleKeys(keyCode) {
 function takeDamage(target, amount) {
     target.hp -= amount;
     if (target.hp <= 0) {
+        print(`${target.name} dies!`);
         target.dead = true;
-        print(`${target.type} dies!`);
+        target.type = 'corpse';
+        target.name = `${target.name}'s corpse`;
+        delete target.ai;
     }
 }
 
 function attack(attacker, defender) {
     let damage = attacker.power - defender.defense;
     if (damage > 0) {
+        print(`${attacker.name} attacks ${defender.name} for ${damage} hit points.`);
         takeDamage(defender, damage);
-        print(`${attacker.type} attacks ${defender.type} for ${damage} hit points.`);
     } else {
-        print(`${attacker.type} attacks ${defender.type} but does no damage.`);
+        print(`${attacker.name} attacks ${defender.name} but does no damage.`);
     }
 }
 
