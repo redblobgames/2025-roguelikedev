@@ -11,7 +11,10 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
     <div id="health-bar"/>
     <div id="health-text"/>
   </div>
-  <div id="messages"/>
+  <div id="message-area">
+    <div id="messages"/>
+    <div id="message-overlay"/>
+  </div>
   <div id="instructions"/>
 </figure>
 #+end_export
@@ -785,6 +788,8 @@ I already implemented the message area earlier. It's in HTML instead of in ROT.j
 
 [[./screenshots/14.png]]
 
+* Message area, part 2
+
 I also improved the message area:
 
 1. added color by switching from =<pre>= to a =<div>= with =<div>= children, each with a css =color: …= set
@@ -795,11 +800,116 @@ I also improved the message area:
 
 [[./screenshots/15.png]]
 
+Version 2 of the Python tutorial also adds a way to scroll the message area, integrated into its event loop. The browser gives me that for free, although it's mouse based and not keyboard based like the Python version. Version 2 also adds message stacking, but I didn't implement that either.
+
+I think it wouldn't be hard to add color /within/ lines. I did that with [[http://www-cs-students.stanford.edu/~amitp/Articles/SRE-Documentation.html][my DOS games]] and liked the effect. But for now I'm sticking to implementing the features from version 1 of the Python tutorial.
+
+* Mouse info
+
+The Python tutorial fits the mouse handling into the main event loop but the browser has its own event loop, so I deviated from the tutorial's approach.
+
+First question is: where do I want to display this information? I decided to use CSS grid to display it over the message console. Here's the HTML:
+
+#+begin_src xml
+  <div id="message-area">
+    <div id="messages"/>
+    <div id="message-overlay"/>
+  </div>
+#+end_src
+
+Normally this would be laid out with the message console (=#messages=) first and then the next div afterwards. But with CSS grid I put them in the same spot:
+
+#+begin_src css
+      #message-area {
+          margin: auto;
+          display: grid;
+          grid-template-areas: "all";
+          height: 8em;
+          font-family: var(--monospace), monospace;
+          font-size: 0.8em;
+          line-height: 1.0;
+      }
+      #messages {
+          grid-area: all;
+          …
+      }
+      #message-overlay {
+          grid-area: all;
+          z-index: 2; /* workaround for chrome */
+          opacity: 0.0;
+          background: hsl(200, 50%, 30%);
+          color: white;
+          white-space: pre-wrap;
+      }
+      #message-overlay.visible {
+          opacity: 1.0;
+      }
+#+end_src
+
+Then in the code, I set the opacity to 1 if there's text and 0 if not:
+
+#+begin_src js
+const setOverlayMessage = (() => {
+    let area = document.querySelector("#message-overlay");
+    return function(text) {
+        area.textContent = text;
+        area.setAttribute("class", text? "visible" : "");
+    };
+})();
+#+end_src
+
+This works nicely! /Except/ on Chrome, where it works initially but then fails later for reasons I couldn't figure out. By adding =z-index: 2= to the overlay, it worked, but I don't understand /why/.
+
+The next step is to attach a =mousemove= listener to the =<canvas>=. I didn't integrate into the main game loop, but instead have this running independently.
+
+Not mentioned in the ROT.js interactive manual, ROT.js's display class has a useful method =eventToPosition=, documented [[https://ondras.github.io/rot.js/doc/classes/_display_display_.display.html#eventtoposition][here]]. It takes a mouse event and gives us back a grid tile location. If it returns =[-1, -1]= it was out of range (which seems like it should never happen, but does).
+
+#+begin_src js
+function allEntitiesAt(x, y) {
+    return Array.from(entities.values()).filter(e => e.x === x && e.y === y);
+}
+
+function handleMousemove(event) {
+    let [x, y] = display.eventToPosition(event); // returns -1, -1 for out of bounds
+    let entities = allEntitiesAt(x, y);
+    let text = entities.map(e => e.name).join("\n");
+    setOverlayMessage(text);
+}
+
+function handleMouseout(event) {
+    setOverlayMessage("");
+}
+
+const canvas = display.getContainer();
+canvas.addEventListener('mousemove', handleMousemove);
+canvas.addEventListener('mouseout', handleMouseout);
+#+end_src
+
+Hooray, it works!
+
+[[./screenshots/16.png]]
+
+This feature was relatively easy to implement.
+
+But … this broke the message area scrolling! The problem is that the scroll mouse event gets sent to the overlay, even when its opacity is 0.0. I fixed this by adding CSS:
+
+#+begin_src css
+      #message-overlay {
+          …
+          pointer-events: none;
+      }
+#+end_src
+
+While I was at it, I also added a fade-out effect using =transition: all 0.3s= to =#message-overlay= and =transition: all 0s= to =#message-overlay.visible=. When making the overlay visible, it will have no transition (0s) but when making the overlay invisible it will use a quick transition (0.3s).
+
 
 
 #+begin_export html
 <x:footer>
   <style>
+      figure {
+          text-align: left;
+      }
       .figure img { 
           display: block; 
           margin: auto; 
@@ -815,16 +925,24 @@ I also improved the message area:
           outline: none;
           opacity: 1.0;
       }
-      #messages {
+
+      #instructions {
+          text-align: center;
+      }
+
+      #message-area {
           width: 600px;
           margin: auto;
-          padding: 0.5em 1em;
-          border: none;
-          text-align: left;
+          display: grid;
+          grid-template-areas: "all";
+          height: 8em;
           font-family: var(--monospace), monospace;
           font-size: 0.8em;
-          height: 8em;
           line-height: 1.0;
+      }
+      #messages {
+          grid-area: all;
+          padding: 0.5em 1em;
           background: hsl(60, 10%, 10%);
           color: white;
           overflow-x: hidden;
@@ -845,6 +963,25 @@ I also improved the message area:
       #messages > div.enemy-attack  { color : hsl(  0,  50%,  80%); }
       #messages > div.enemy-die     { color : hsl(150,  30%,  70%); }
 
+      #message-overlay {
+          grid-area: all;
+          z-index: 2; /* needed for chrome but not firefox or safari; may be a browser bug */
+          height: 0%;
+          padding: 0.5em 1em;
+          opacity: 0.0;
+          pointer-events: none; /* so scroll events go down to the #messages div */
+          white-space: pre-wrap;
+          background: black;
+          color: white;
+          transition: all 0.3s;
+      }
+      #message-overlay.visible {
+          height: 100%;
+          opacity: 1.0;
+          background: hsl(200, 50%, 30%);
+          transition: all 0s;
+      }
+
       #status-bar {
           width: 600px;
           margin: auto;
@@ -858,6 +995,7 @@ I also improved the message area:
       }
       #health-text {
           grid-area: all;
+          font-size: 0.8em;
           font-family: var(--sans-serif), sans-serif;
           color: white;
           text-align: center;

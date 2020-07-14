@@ -23,7 +23,7 @@ const randint = ROT.RNG.getUniformInt.bind(ROT.RNG);
 
 /** console messages */
 const print = (() => {
-    const MAX_LINES = 25;
+    const MAX_LINES = 100;
     let messages = document.querySelector("#messages");
     return function(message, className) {
         let line = document.createElement('div');
@@ -34,6 +34,15 @@ const print = (() => {
             messages.removeChild(messages.children[0]);
         }
         messages.scrollTop = messages.scrollHeight;
+    };
+})();
+
+/** overlay messages - hide if text is empty */
+const setOverlayMessage = (() => {
+    let area = document.querySelector("#message-overlay");
+    return function(text) {
+        area.textContent = text;
+        area.setAttribute("class", text? "visible" : "");
     };
 })();
 
@@ -63,14 +72,15 @@ function createEntity(type, x, y, properties={}) {
 }
 createEntity.id = 0;
 
+/** return all entities at (x,y) */
+function allEntitiesAt(x, y) {
+    return Array.from(entities.values()).filter(e => e.x === x && e.y === y);
+}
+
 /** return a blocking entity at (x,y) or null if there isn't one */
 function blockingEntityAt(x, y) {
-    for (let entity of entities.values()) {
-        if (entity.blocks && entity.x === x && entity.y === y) {
-            return entity;
-        }
-    }
-    return null;
+    let entities = allEntitiesAt(x, y).filter(e => e.blocks);
+    return entities[0] || null;
 }
 
 let player = createEntity('player', 1, 5, {hp: 30, max_hp: 30, defense: 2, power: 5});
@@ -289,11 +299,24 @@ function handleKeyDown(event) {
     }
 }
 
-function setupKeyboardHandler(display, handler) {
+function handleMousemove(event) {
+    let [x, y] = display.eventToPosition(event); // returns -1, -1 for out of bounds
+    let entities = allEntitiesAt(x, y);
+    let text = entities.map(e => e.name).join("\n");
+    setOverlayMessage(text);
+}
+
+function handleMouseout(event) {
+    setOverlayMessage("");
+}
+
+function setupInputHandlers(display) {
     const canvas = display.getContainer();
     const instructions = document.getElementById('instructions');
     canvas.setAttribute('tabindex', "1");
     canvas.addEventListener('keydown', handleKeyDown);
+    canvas.addEventListener('mousemove', handleMousemove);
+    canvas.addEventListener('mouseout', handleMouseout);
     canvas.addEventListener('blur', () => { instructions.textContent = "Click game for keyboard focus"; });
     canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move"; });
     canvas.focus();
@@ -301,4 +324,4 @@ function setupKeyboardHandler(display, handler) {
 
 print("Hello and welcome, adventurer, to yet another dungeon!", 'welcome');
 draw();
-setupKeyboardHandler(display, handleKeyDown);
+setupInputHandlers(display);
