@@ -901,7 +901,55 @@ But … this broke the message area scrolling! The problem is that the scroll mo
 
 While I was at it, I also added a fade-out effect using =transition: all 0.3s= to =#message-overlay= and =transition: all 0s= to =#message-overlay.visible=. When making the overlay visible, it will have no transition (0s) but when making the overlay invisible it will use a quick transition (0.3s).
 
+* Items and inventory
 
+Part 8 of the Python tutorial covers items and inventory. I decided to use a different representation than they use. To pick up an item, they /remove/ the entity from the global =entities= array, and then ignore the =x= and =y= fields on it.
+
+- instead of entities having =x= and =y=, they have =location=, which can be either
+  - ={x:int, y:int}= if the entity is on the map, or
+  - ={carried:id, slot:int}= if the entity is in someone's inventory.
+- instead of inventory having =capacity:int= and =items:Array<object>=, the inventory is a fixed length =Array<null|id>=, with the length being the capacity.
+
+In the Python tutorial, if you pick up a potion of healing, then pick up a potion of confusion, they will be assigned keys ~a~ and ~b~. If you drop the first potion, then the potion of confusion changes from ~b~ to ~a~. I like the Brogue approach, where an item keeps its key, so I represented the inventory as a fixed size array where each slot can contain an item or null.
+
+The logic for this is slightly tricky because there are two systems that have to be kept in sync. To pick up an item, I need to update both the item's data and the carrier's data:
+
+- item =A=: ={carried: E.id, slot: P}=
+- entity =E=: ={inventory: […, A.id, …]}= where that id is in position =P=
+
+And to drop the item I need to update both again:
+
+- item: =A=: ={x: x, y: y}=
+- entity =E=: ={inventory: […, null, …]}=
+
+What happens if the entity is consumed? I haven't decided yet.
+
+I wanted to encapsulate the logic for keeping this data in sync, so I wrote a function:
+
+#+begin_src js
+function moveEntityTo(entity, location) {
+    if (entity.location.carried !== undefined) {
+        let {carried, slot} = entity.location;
+        let carrier = entities.get(carried);
+        if (carrier.inventory[slot] !== entity.id)
+            throw `invalid: inventory slot ${slot} contains ${carrier.inventory[slot]} but should contain ${entity.id}`;
+        carrier.inventory[slot] = null;
+    }
+    entity.location = location;
+    if (entity.location.carried !== undefined) {
+        let {carried, slot} = entity.location;
+        let carrier = entities.get(carried);
+        if (carrier.inventory === undefined)
+            throw `invalid: moving to an entity without inventory`;
+        if (carrier.inventory[slot] !== null)
+            throw `invalid: inventory already contains an item ${carrier.inventory[slot]} in slot ${slot}`;
+        carrier.inventory[slot] = entity.id;
+    }
+    // TODO: add constraints for at most one (player|monster) and at most one (item) in any {x, y}
+}
+#+end_src
+
+This logic is tricky enough that I want to make sure I have plenty of assertions in there!
 
 #+begin_export html
 <x:footer>
@@ -961,11 +1009,13 @@ While I was at it, I also added a fade-out effect using =transition: all 0.3s= t
           margin-bottom: 0.25em;
           text-indent: -1em;
       }
-      #messages > div.welcome       { color : hsl(220,  50%,  70%); }
-      #messages > div.player-attack { color : hsl( 30,  10%,  80%); }
-      #messages > div.player-die    { color : hsl(  0, 100%,  50%); }
-      #messages > div.enemy-attack  { color : hsl(  0,  50%,  80%); }
-      #messages > div.enemy-die     { color : hsl(150,  30%,  70%); }
+      #messages > div.welcome       { color: hsl(220,  50%,  70%); }
+      #messages > div.player-attack { color: hsl( 30,  10%,  80%); }
+      #messages > div.player-die    { color: hsl(  0, 100%,  50%); }
+      #messages > div.enemy-attack  { color: hsl(  0,  50%,  80%); }
+      #messages > div.enemy-die     { color: hsl(150,  30%,  70%); }
+      #messages > div.warning       { color: hsl( 60,  50%,  70%); }
+      #messages > div.pick-up       { color: hsl(220,  50%,  80%); }
 
       #message-overlay {
           z-index: 2; /* needed for chrome but not firefox or safari; may be a browser bug */
@@ -1006,6 +1056,6 @@ While I was at it, I also added a fade-out effect using =transition: all 0.3s= t
   <script src="roguelike-dev.js"></script>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 14 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 19 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export

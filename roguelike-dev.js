@@ -50,25 +50,32 @@ const setOverlayMessage = (() => {
 
 /** Entity properties that are shared among all the instances of the type */
 const ENTITY_PROPERTIES = {
-    player: { blocks: true,  render_order: 9, visuals: ['@', "hsl(60, 100%, 70%)"], },
-    troll:  { blocks: true,  render_order: 6, visuals: ['T', "hsl(120, 60%, 30%)"], },
-    orc:    { blocks: true,  render_order: 6, visuals: ['o', "hsl(100, 30%, 40%)"], },
-    corpse: { blocks: false, render_order: 0, visuals: ['%', "darkred"], },
+    player: { blocks: true, item: false, render_order: 9, visuals: ['@', "hsl(60, 100%, 70%)"], },
+    troll:  { blocks: true, item: false, render_order: 6, visuals: ['T', "hsl(120, 60%, 30%)"], },
+    orc:    { blocks: true, item: false, render_order: 6, visuals: ['o', "hsl(100, 30%, 40%)"], },
+    corpse: { blocks: false, item: false, render_order: 0, visuals: ['%', "darkred"], },
+    'healing potion': { blocks: false, item: true, render_order: 1, visuals: ['!', "violet"], },
 };
 /* always use the current value of 'type' to get the entity properties,
     so that we can change the object type later (e.g. to 'corpse') */
 const entity_prototype = {
+    get item() { return ENTITY_PROPERTIES[this.type].item; },
     get blocks() { return ENTITY_PROPERTIES[this.type].blocks; },
     get visuals() { return ENTITY_PROPERTIES[this.type].visuals; },
     get render_order() { return ENTITY_PROPERTIES[this.type].render_order; },
 };
 
+/* Schema:
+ * location: {x:int, y:int} | {carried:id, slot:int} -- latter allowed only if .item === true
+ * inventory: Array<null|int> - should only contain entities with .item === true
+*/
 let entities = new Map();
 function createEntity(type, location, properties={}) {
     let id = ++createEntity.id;
     let entity = Object.create(entity_prototype);
     entity.name = type;
-    Object.assign(entity, { id, type, location, ...properties });
+    Object.assign(entity, { id, type, location: {x: NaN, y: NaN}, ...properties });
+    moveEntityTo(entity, location);
     entities.set(id, entity);
     return entity;
 }
@@ -79,13 +86,48 @@ function allEntitiesAt(x, y) {
     return Array.from(entities.values()).filter(e => e.location.x === x && e.location.y === y);
 }
 
-/** return a blocking entity at (x,y) or null if there isn't one */
-function blockingEntityAt(x, y) {
-    let entities = allEntitiesAt(x, y).filter(e => e.blocks);
+/** return an item at (x,y) or null if there isn't one */
+function itemEntityAt(x, y) {
+    let entities = allEntitiesAt(x, y).filter(e => e.item);
+    if (entities.length > 1) throw `invalid: more than one item entity at ${x},${y}`;
     return entities[0] || null;
 }
 
-let player = createEntity('player', {x: 1, y: 5}, {hp: 30, max_hp: 30, defense: 2, power: 5, inventory: {capacity: 26, items: []}});
+/** return a blocking entity at (x,y) or null if there isn't one */
+function blockingEntityAt(x, y) {
+    let entities = allEntitiesAt(x, y).filter(e => e.blocks);
+    if (entities.length > 1) throw `invalid: more than one blocking entity at ${x},${y}`;
+    return entities[0] || null;
+}
+
+/** move an entity to a new location, either {x:int y:int} or {carried:id slot:int} */
+function moveEntityTo(entity, location) {
+    if (entity.location.carried !== undefined) {
+        let {carried, slot} = entity.location;
+        let carrier = entities.get(carried);
+        if (carrier.inventory[slot] !== entity.id) throw `invalid: inventory slot ${slot} contains ${carrier.inventory[slot]} but should contain ${entity.id}`;
+        carrier.inventory[slot] = null;
+    }
+    entity.location = location;
+    if (entity.location.carried !== undefined) {
+        let {carried, slot} = entity.location;
+        let carrier = entities.get(carried);
+        if (carrier.inventory === undefined) throw `invalid: moving to an entity without inventory`;
+        if (carrier.inventory[slot] !== null) throw `invalid: inventory already contains an item ${carrier.inventory[slot]} in slot ${slot}`;
+        carrier.inventory[slot] = entity.id;
+    }
+    // TODO: add constraints for at most one (player|monster) and at most one (item) in any {x, y}
+}
+
+/** inventory is represented as an array with (null | entity.id) */
+function createInventoryArray(capacity) {
+    return Array.from({length: capacity}, () => null);
+}
+
+let player = createEntity(
+    'player', {x: 1, y: 5},
+    {hp: 30, max_hp: 30, defense: 2, power: 5, inventory: createInventoryArray(26)}
+);
 
 function populateRoom(room, maxMonstersPerRoom, maxItemsPerRoom) {
     const numMonsters = randint(0, maxMonstersPerRoom);
@@ -98,6 +140,15 @@ function populateRoom(room, maxMonstersPerRoom, maxItemsPerRoom) {
                 ? ['troll', {hp: 16, max_hp: 16, defense: 1, power: 4, ai}]
                 : ['orc',   {hp: 10, max_hp: 10, defense: 0, power: 3, ai}];
             createEntity(type, {x, y}, props);
+        }
+    }
+    
+    const numItems = randint(0, maxItemsPerRoom);
+    for (let i = 0; i < numItems; i++) {
+        let x = randint(room.getLeft(), room.getRight()),
+            y = randint(room.getTop(), room.getBottom());
+        if (allEntitiesAt(x, y).length === 0) {
+            createEntity('healing potion', {x, y});
         }
     }
 }
@@ -195,6 +246,7 @@ function handleKeys(keyCode) {
         [ROT.KEYS.VK_LEFT]:  () => ['move', -1, 0],
         [ROT.KEYS.VK_DOWN]:  () => ['move', 0, +1],
         [ROT.KEYS.VK_UP]:    () => ['move', 0, -1],
+        [ROT.KEYS.VK_G]:     () => ['pickup'],
         [ROT.KEYS.VK_O]:     () => ['toggle-debug'],
     };
     let action = actions[keyCode];
@@ -223,15 +275,34 @@ function attack(attacker, defender) {
     }
 }
 
+function playerPickupItem() {
+    let item = itemEntityAt(player.location.x, player.location.y);
+    if (!item) {
+        print(`There is nothing here to pick up.`, 'warning');
+        return;
+    }
+    
+    let slot = player.inventory.indexOf(null); // first open inventory slot
+    if (slot < 0) {
+        print(`You cannot carry any more. Your inventory is full.`, 'warning');
+        return;
+    }
+
+    print(`You pick up the ${item.name}!`, 'pick-up');
+    moveEntityTo(item, {carried: player.id, slot});
+    enemiesMove();
+
+}
+
 function playerMoveBy(dx, dy) {
-    let newX = player.location.x + dx,
-        newY = player.location.y + dy;
-    if (tileMap.get(newX, newY).walkable) {
-        let target = blockingEntityAt(newX, newY);
+    let x = player.location.x + dx,
+        y = player.location.y + dy;
+    if (tileMap.get(x, y).walkable) {
+        let target = blockingEntityAt(x, y);
         if (target) {
             attack(player, target);
         } else {
-            player.location = {x: newX, y: newY};
+            moveEntityTo(player, {x, y});
         }
         enemiesMove();
     }
@@ -246,9 +317,6 @@ function enemiesMove() {
                 // can't see the player, so the monster doesn't move
                 continue;
             }
-            if (entity.location.x === player.location.x && entity.location.y === player.location.y) {
-                throw "Invariant broken: monster and player are in same location";
-            }
             
             let dx = player.location.x - entity.location.x,
                 dy = player.location.y - entity.location.y;
@@ -260,17 +328,16 @@ function enemiesMove() {
             } else {
                 stepy = dy / Math.abs(dy);
             }
-            let newX = entity.location.x + stepx,
-                newY = entity.location.y + stepy;
-            if (tileMap.get(newX, newY).walkable) {
-                let target = blockingEntityAt(newX, newY);
+            let x = entity.location.x + stepx,
+                y = entity.location.y + stepy;
+            if (tileMap.get(x, y).walkable) {
+                let target = blockingEntityAt(x, y);
                 if (target && target.id === player.id) {
                     attack(entity, player);
                 } else if (target) {
                     // another monster there; can't move
                 } else {
-                    // take a step
-                    entity.location = {x: newX, y: newY};
+                    moveEntityTo(entity, {x, y});
                 }
             }
         }
@@ -289,6 +356,10 @@ function handleKeyDown(event) {
         case 'move': {
             let [_, dx, dy] = action;
             playerMoveBy(dx, dy);
+            break;
+        }
+        case 'pickup': {
+            playerPickupItem();
             break;
         }
         case 'toggle-debug': {
@@ -321,7 +392,7 @@ function setupInputHandlers(display) {
     canvas.addEventListener('mousemove', handleMousemove);
     canvas.addEventListener('mouseout', handleMouseout);
     canvas.addEventListener('blur', () => { instructions.textContent = "Click game for keyboard focus"; });
-    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move"; });
+    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move, g to pick up item"; });
     canvas.focus();
 }
 
