@@ -1,20 +1,17 @@
 #+title: r/roguelikedev summer tutorial
 #+date: <2020-06-18 Thu>
+#+options: toc:nil
 
 I had previously followed the r/roguelikedev summer tutorial series, but never finished.
 I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]] this time.
 
 #+begin_export html
 <figure>
-  <div id="game"/>
-  <div id="status-bar">
-    <div id="health-bar"/>
-    <div id="health-text"/>
-  </div>
-  <div id="message-area">
-    <div id="messages"/>
-    <div id="message-overlay"/>
-  </div>
+  <div id="status-bar"/>
+  <div id="health-bar"/>
+  <div id="health-text"/>
+  <div id="messages"/>
+  <div id="message-overlay"/>
   <div id="instructions"/>
 </figure>
 #+end_export
@@ -22,6 +19,8 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
 Source code: [[href:roguelike-dev.js][roguelike-dev.js]]
 
 * Getting started
+
+#+TOC: headlines 2
 
 I'm going to follow the [[http://rogueliketutorials.com/tutorials/tcod/][Roguelike Tutorial for Python]] (2019 version, not the 2020 version, for various reasons) and adapt it for [[https://ondras.github.io/rot.js/hp/][rot.js]]. [[http://rogueliketutorials.com/tutorials/tcod/part-0/][Part 0]] of the tutorial covers setting up Python and libtcod. I'll instead set up rot.js.
 
@@ -825,7 +824,7 @@ Normally this would be laid out with the message console (=#messages=) first and
           display: grid;
           grid-template-areas: "all";
           height: 8em;
-          font-family: var(--monospace), monospace;
+          font-family: monospace;
           font-size: 0.8em;
           line-height: 1.0;
       }
@@ -907,41 +906,46 @@ While I was at it, I also added a fade-out effect using =transition: all 0.3s= t
 #+begin_export html
 <x:footer>
   <style>
-      figure {
-          text-align: left;
-      }
       .figure img { 
           display: block; 
           margin: auto; 
           border: 2px solid #999; 
           box-shadow: 0 1px 2px 2px rgba(0,0,0,0.2); 
       }
-      #game canvas { 
+
+      figure {
+          text-align: left;
+          display: grid;
+          justify-content: center;
+          grid-template-columns: min-content;
+          grid-template-areas: "game" "status-bar" "message-area" "instructions";
+      }
+      canvas#game { 
+          grid-area: game;
           display: block;
-          margin: auto;
+          max-width: unset;
           opacity: 0.5;
       }
-      #game canvas:focus {
+      canvas#game:focus {
           outline: none;
           opacity: 1.0;
       }
 
       #instructions {
+          height: 1.2em;
+          grid-area: instructions;
           text-align: center;
       }
 
-      #message-area {
-          width: 600px;
-          margin: auto;
-          display: grid;
-          grid-template-areas: "all";
+      #messages, #message-overlay {
+          grid-area: message-area;
+          width: 100%;
           height: 8em;
           font-family: var(--monospace), monospace;
           font-size: 0.8em;
           line-height: 1.0;
       }
       #messages {
-          grid-area: all;
           padding: 0.5em 1em;
           background: hsl(60, 10%, 10%);
           color: white;
@@ -964,7 +968,6 @@ While I was at it, I also added a fade-out effect using =transition: all 0.3s= t
       #messages > div.enemy-die     { color : hsl(150,  30%,  70%); }
 
       #message-overlay {
-          grid-area: all;
           z-index: 2; /* needed for chrome but not firefox or safari; may be a browser bug */
           height: 0%;
           padding: 0.5em 1em;
@@ -983,18 +986,16 @@ While I was at it, I also added a fade-out effect using =transition: all 0.3s= t
       }
 
       #status-bar {
-          width: 600px;
-          margin: auto;
-          display: grid;
-          grid-template-areas: "all";
+          grid-area: status-bar;
+          width: 100%;
           background: hsl(0, 50%, 20%);
       }
       #health-bar {
-          grid-area: all;
+          grid-area: status-bar;
           background: hsl(200, 50%, 40%);
       }
       #health-text {
-          grid-area: all;
+          grid-area: status-bar;
           font-size: 0.8em;
           font-family: var(--sans-serif), sans-serif;
           color: white;
@@ -1005,6 +1006,6 @@ While I was at it, I also added a fade-out effect using =transition: all 0.3s= t
   <script src="roguelike-dev.js"></script>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 13 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 14 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export

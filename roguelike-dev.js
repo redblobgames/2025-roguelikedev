@@ -13,8 +13,10 @@
 let DEBUG_ALL_EXPLORED = false;
 
 ROT.RNG.setSeed(127);
-const display = new ROT.Display({width: 60, height: 25, fontFamily: 'Roboto Mono'});
-document.getElementById("game").appendChild(display.getContainer());
+
+const display = new ROT.Display({width: 60, height: 25, fontSize: 16, fontFamily: 'monospace'});
+display.getContainer().setAttribute('id', "game");
+document.querySelector("figure").appendChild(display.getContainer());
 
 
 /** like python's randint */
