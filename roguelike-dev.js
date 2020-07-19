@@ -64,11 +64,11 @@ const entity_prototype = {
 };
 
 let entities = new Map();
-function createEntity(type, x, y, properties={}) {
+function createEntity(type, location, properties={}) {
     let id = ++createEntity.id;
     let entity = Object.create(entity_prototype);
     entity.name = type;
-    Object.assign(entity, { id, type, x, y, ...properties });
+    Object.assign(entity, { id, type, location, ...properties });
     entities.set(id, entity);
     return entity;
 }
@@ -76,7 +76,7 @@ createEntity.id = 0;
 
 /** return all entities at (x,y) */
 function allEntitiesAt(x, y) {
-    return Array.from(entities.values()).filter(e => e.x === x && e.y === y);
+    return Array.from(entities.values()).filter(e => e.location.x === x && e.location.y === y);
 }
 
 /** return a blocking entity at (x,y) or null if there isn't one */
@@ -85,10 +85,10 @@ function blockingEntityAt(x, y) {
     return entities[0] || null;
 }
 
-let player = createEntity('player', 1, 5, {hp: 30, max_hp: 30, defense: 2, power: 5});
+let player = createEntity('player', {x: 1, y: 5}, {hp: 30, max_hp: 30, defense: 2, power: 5, inventory: {capacity: 26, items: []}});
 
-function createMonsters(room, maxMonstersPerRoom) {
-    let numMonsters = randint(0, maxMonstersPerRoom);
+function populateRoom(room, maxMonstersPerRoom, maxItemsPerRoom) {
+    const numMonsters = randint(0, maxMonstersPerRoom);
     for (let i = 0; i < numMonsters; i++) {
         let x = randint(room.getLeft(), room.getRight()),
             y = randint(room.getTop(), room.getBottom());
@@ -97,7 +97,7 @@ function createMonsters(room, maxMonstersPerRoom) {
             let [type, props] = randint(0, 3) === 0
                 ? ['troll', {hp: 16, max_hp: 16, defense: 1, power: 4, ai}]
                 : ['orc',   {hp: 10, max_hp: 10, defense: 0, power: 3, ai}];
-            createEntity(type, x, y, props);
+            createEntity(type, {x, y}, props);
         }
     }
 }
@@ -129,7 +129,7 @@ function createTileMap(width, height) {
 const WIDTH = 60, HEIGHT = 25;
 let tileMap = createTileMap(WIDTH, HEIGHT);
 for (let room of tileMap.rooms) {
-    createMonsters(room, 3);
+    populateRoom(room, 3, 2);
 }
 
 const fov = new ROT.FOV.PreciseShadowcasting((x, y) => tileMap.has(x, y) && tileMap.get(x, y).walkable);
@@ -151,7 +151,9 @@ function computeGlyphMap(entities) {
     let glyphMap = createMap(); // [char, fg, optional bg]
     entities = Array.from(entities.values());
     entities.sort((a, b) => a.render_order - b.render_order);
-    entities.forEach(e => glyphMap.set(e.x, e.y, e.visuals));
+    entities
+        .filter(e => e.location.x !== undefined)
+        .forEach(e => glyphMap.set(e.location.x, e.location.y, e.visuals));
     return glyphMap;
 }
 
@@ -165,7 +167,7 @@ function draw() {
     document.querySelector("#health-bar").style.width = `${Math.ceil(100*player.hp/player.max_hp)}%`;
     document.querySelector("#health-text").textContent = ` HP: ${player.hp} / ${player.max_hp}`;
     
-    let lightMap = computeLightMap(player, tileMap);
+    let lightMap = computeLightMap(player.location, tileMap);
     let glyphMap = computeGlyphMap(entities);
     
     for (let y = 0; y < HEIGHT; y++) {
@@ -222,35 +224,34 @@ function attack(attacker, defender) {
 }
 
 function playerMoveBy(dx, dy) {
-    let newX = player.x + dx,
-        newY = player.y + dy;
+    let newX = player.location.x + dx,
+        newY = player.location.y + dy;
     if (tileMap.get(newX, newY).walkable) {
         let target = blockingEntityAt(newX, newY);
         if (target) {
             attack(player, target);
         } else {
-            player.x = newX;
-            player.y = newY;
+            player.location = {x: newX, y: newY};
         }
         enemiesMove();
     }
 }
 
 function enemiesMove() {
-    let lightMap = computeLightMap(player, tileMap);
+    let lightMap = computeLightMap(player.location, tileMap);
     for (let entity of entities.values()) {
-        if (!entity.dead && entity.ai && entity.ai.behavior === 'move_to_player') {
-            if (!(lightMap.get(entity.x, entity.y) > 0.0)) {
+        if (!entity.dead && entity.ai && entity.ai.behavior === 'move_to_player' && entity.location.x !== undefined) {
+            if (!(lightMap.get(entity.location.x, entity.location.y) > 0.0)) {
                 // The player can't see the monster, so the monster
                 // can't see the player, so the monster doesn't move
                 continue;
             }
-            if (entity.x === player.x && entity.y === player.y) {
+            if (entity.location.x === player.location.x && entity.location.y === player.location.y) {
                 throw "Invariant broken: monster and player are in same location";
             }
             
-            let dx = player.x - entity.x,
-                dy = player.y - entity.y;
+            let dx = player.location.x - entity.location.x,
+                dy = player.location.y - entity.location.y;
 
             // Pick either vertical or horizontal movement randomly
             let stepx = 0, stepy = 0;
@@ -259,7 +260,8 @@ function enemiesMove() {
             } else {
                 stepy = dy / Math.abs(dy);
             }
-            let newX = entity.x + stepx, newY = entity.y + stepy;
+            let newX = entity.location.x + stepx,
+                newY = entity.location.y + stepy;
             if (tileMap.get(newX, newY).walkable) {
                 let target = blockingEntityAt(newX, newY);
                 if (target && target.id === player.id) {
@@ -268,8 +270,7 @@ function enemiesMove() {
                     // another monster there; can't move
                 } else {
                     // take a step
-                    entity.x = newX;
-                    entity.y = newY;
+                    entity.location = {x: newX, y: newY};
                 }
             }
         }
