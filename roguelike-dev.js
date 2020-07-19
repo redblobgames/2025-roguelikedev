@@ -374,8 +374,9 @@ function handleKeyDown(event) {
 }
 
 function handleMousemove(event) {
+    let lightMap = computeLightMap(player.location, tileMap);
     let [x, y] = display.eventToPosition(event); // returns -1, -1 for out of bounds
-    let entities = allEntitiesAt(x, y);
+    let entities = lightMap.get(x, y) > 0.0 ? allEntitiesAt(x, y) : [];
     let text = entities.map(e => e.name).join("\n");
     setOverlayMessage(text);
 }
