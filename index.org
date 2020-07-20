@@ -10,6 +10,7 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
   <div id="status-bar"/>
   <div id="health-bar"/>
   <div id="health-text"/>
+  <div id="inventory-overlay"/>
   <div id="messages"/>
   <div id="message-overlay"/>
   <div id="instructions"/>
@@ -951,6 +952,14 @@ function moveEntityTo(entity, location) {
 
 This logic is tricky enough that I want to make sure I have plenty of assertions in there!
 
+* Inventory UI
+
+Part 8 also introduces an inventory UI. Since the browser already provides multiple UI elements, I wanted to try using them instead of creating my own as the Python version is forced to do. I created a new overlay ~<div id="inventory-overlay">~ and hid it when not in use.
+
+[[./screenshots/17.png]]
+
+I had hoped to try using the focused element status from the browser to keep track of whether the main game had focus or the inventory dialog had focus, but that ended up being more complicated than I wanted to tackle right now. The main problem is that the user may change the focus with the browser controls (mouse or keyboard) instead of going through the game's controls and then I need to handle that somehow.
+
 #+begin_export html
 <x:footer>
   <style>
@@ -970,6 +979,7 @@ This logic is tricky enough that I want to make sure I have plenty of assertions
       }
       canvas#game { 
           grid-area: game;
+          z-index: 1;
           display: block;
           max-width: unset;
           opacity: 0.5;
@@ -977,6 +987,40 @@ This logic is tricky enough that I want to make sure I have plenty of assertions
       canvas#game:focus {
           outline: none;
           opacity: 1.0;
+      }
+
+      #inventory-overlay {
+          grid-area: game;
+          z-index: 0;
+          height: auto;
+          align-self: center;
+          padding: 0.5em;
+          line-height: 1.0;
+          font-family: monospace;
+          font-size: 0.8em;
+          opacity: 0;
+          background: hsl(60, 10%, 20%);
+          color: white;
+      }
+      #inventory-overlay.visible {
+          z-index: 2;
+          opacity: 1;
+      }
+      #inventory-overlay ul {
+          column-count: 2;
+          column-gap: 1em;
+          column-fill: balance;
+      }
+      #inventory-overlay li {
+          list-style-type: none;
+      }
+      #inventory-overlay kbd {
+          display: inline-block;
+          border: 1px solid hsl(150, 60%, 30%);
+          padding: 2px 4px;
+          background: hsl(150, 50%, 30%);
+          font-weight: normal;
+          color: yellow;
       }
 
       #instructions {
@@ -1016,6 +1060,7 @@ This logic is tricky enough that I want to make sure I have plenty of assertions
       #messages > div.enemy-die     { color: hsl(150,  30%,  70%); }
       #messages > div.warning       { color: hsl( 60,  50%,  70%); }
       #messages > div.pick-up       { color: hsl(220,  50%,  80%); }
+      #messages > div.healing       { color: hsl(150,  50%,  70%); }
 
       #message-overlay {
           z-index: 2; /* needed for chrome but not firefox or safari; may be a browser bug */
