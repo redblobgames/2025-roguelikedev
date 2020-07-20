@@ -10,7 +10,8 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
   <div id="status-bar"/>
   <div id="health-bar"/>
   <div id="health-text"/>
-  <div id="inventory-overlay"/>
+  <div id="inventory-overlay-use" class="inventory-overlay"/>
+  <div id="inventory-overlay-drop" class="inventory-overlay"/>
   <div id="messages"/>
   <div id="message-overlay"/>
   <div id="instructions"/>
@@ -960,6 +961,15 @@ Part 8 also introduces an inventory UI. Since the browser already provides multi
 
 I had hoped to try using the focused element status from the browser to keep track of whether the main game had focus or the inventory dialog had focus, but that ended up being more complicated than I wanted to tackle right now. The main problem is that the user may change the focus with the browser controls (mouse or keyboard) instead of going through the game's controls and then I need to handle that somehow.
 
+The inventory UI gets used for two actions: /use/ and /drop/. When invoking the action, I need to remember which action I'll perform when the inventory item is selected. This also affects the text the player sees at the top of the dialog box.
+
+I decided the way to remember the action is to make two separate inventory overlays. I can apply different styling to them, but have them share common code.
+
+
+
+
+
+
 #+begin_export html
 <x:footer>
   <style>
@@ -989,7 +999,7 @@ I had hoped to try using the focused element status from the browser to keep tra
           opacity: 1.0;
       }
 
-      #inventory-overlay {
+      .inventory-overlay {
           grid-area: game;
           z-index: 0;
           height: auto;
@@ -999,27 +1009,39 @@ I had hoped to try using the focused element status from the browser to keep tra
           font-family: monospace;
           font-size: 0.8em;
           opacity: 0;
-          background: hsl(60, 10%, 20%);
+      }
+      #inventory-overlay-use {
+          background: hsl(200, 10%, 20%);
           color: white;
       }
-      #inventory-overlay.visible {
+      #inventory-overlay-drop {
+          background: hsl(0, 20%, 20%);
+          color: white;
+      }
+      .inventory-overlay.visible {
           z-index: 2;
           opacity: 1;
       }
-      #inventory-overlay ul {
+      .inventory-overlay ul {
           column-count: 2;
           column-gap: 1em;
           column-fill: balance;
       }
-      #inventory-overlay li {
+      .inventory-overlay li {
           list-style-type: none;
       }
-      #inventory-overlay kbd {
+      .inventory-overlay kbd {
           display: inline-block;
           border: 1px solid hsl(150, 60%, 30%);
           padding: 2px 4px;
-          background: hsl(150, 50%, 30%);
           font-weight: normal;
+      }
+      #inventory-overlay-use kbd {
+          background: hsl(150, 50%, 30%);
+          color: cyan;
+      }
+      #inventory-overlay-drop kbd {
+          background: hsl(60, 50%, 30%);
           color: yellow;
       }
 
@@ -1101,6 +1123,6 @@ I had hoped to try using the focused element status from the browser to keep tra
   <script src="roguelike-dev.js"></script>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 19 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 20 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export

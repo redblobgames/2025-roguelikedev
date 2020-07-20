@@ -89,7 +89,8 @@ function allEntitiesAt(x, y) {
 /** return an item at (x,y) or null if there isn't one */
 function itemEntityAt(x, y) {
     let entities = allEntitiesAt(x, y).filter(e => e.item);
-    if (entities.length > 1) throw `invalid: more than one item entity at ${x},${y}`;
+    // TODO: allow only one item per map tile
+    // if (entities.length > 1) throw `invalid: more than one item entity at ${x},${y}`;
     return entities[0] || null;
 }
 
@@ -257,6 +258,12 @@ function useItem(entity, item) {
     }
 }
 
+function dropItem(entity, item) {
+    moveEntityTo(item, player.location); // TODO: only one item per map tile?
+    print(`You dropped ${item.name} on the ground`, 'warning');
+    enemiesMove();
+}
+
 
 function takeDamage(target, amount) {
     target.hp -= amount;
@@ -350,8 +357,8 @@ function enemiesMove() {
 }
 
 
-function createInventoryOverlay() {
-    const overlay = document.querySelector("#inventory-overlay");
+function createInventoryOverlay(action) {
+    const overlay = document.querySelector(`#inventory-overlay-${action}`);
     let visible = false;
 
     function draw() {
@@ -368,7 +375,7 @@ function createInventoryOverlay() {
         if (empty) {
             html = `<div>Your inventory is empty. Press <kbd>ESC</kbd> to cancel.</div>${html}`;
         } else {
-            html = `<div>Select an item to use it, or <kbd>ESC</kbd> to cancel.</div>${html}`;
+            html = `<div>Select an item to ${action} it, or <kbd>ESC</kbd> to cancel.</div>${html}`;
         }
         overlay.innerHTML = html;
     }
@@ -386,7 +393,6 @@ function createInventoryOverlay() {
 
 function handlePlayerDeadKeys(keyCode) {
     const actions = {
-        [ROT.KEYS.VK_I]:     () => ['inventory-up'],
         [ROT.KEYS.VK_O]:     () => ['toggle-debug'],
     };
     let action = actions[keyCode];
@@ -400,20 +406,33 @@ function handlePlayerKeys(keyCode) {
         [ROT.KEYS.VK_DOWN]:  () => ['move', 0, +1],
         [ROT.KEYS.VK_UP]:    () => ['move', 0, -1],
         [ROT.KEYS.VK_G]:     () => ['pickup'],
+        [ROT.KEYS.VK_U]:     () => ['inventory-open-use'],
+        [ROT.KEYS.VK_D]:     () => ['inventory-open-drop'],
     };
     let action = actions[keyCode];
     return action ? action() : handlePlayerDeadKeys(keyCode);
 }
 
-function handleInventoryKeys(keyCode) {
-    if (keyCode === ROT.KEYS.VK_ESCAPE) { return ['inventory-down']; }
-    let slot = keyCode - ROT.KEYS.VK_A;
-    if (0 <= slot && slot < 26) { return ['inventory-use', player.inventory[slot]]; }
-    return undefined;
+function handleInventoryKeys(action) {
+    return keyCode => {
+        if (keyCode === ROT.KEYS.VK_ESCAPE) { return [`inventory-close-${action}`]; }
+        let slot = keyCode - ROT.KEYS.VK_A;
+        if (0 <= slot && slot < 26) {
+            let id = player.inventory[slot];
+            if (id !== null) {
+                return [`inventory-do-${action}`, id];
+            }
+        }
+        return undefined;
+    };
 }
 
 function handleKeyDown(event) {
-    let handleKeys = inventoryOverlay.visible? handleInventoryKeys : handlePlayerKeys;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) { return; }
+    let handleKeys =
+          inventoryOverlayUse.visible? handleInventoryKeys('use')
+        : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
+        : handlePlayerKeys;
     let action = handleKeys(event.keyCode);
     if (player.dead) {
         print("You are dead.", 'player-die');
@@ -431,18 +450,32 @@ function handleKeyDown(event) {
             playerPickupItem();
             break;
         }
-        case 'inventory-up': {
-            inventoryOverlay.setVisibility(true);
+        case 'inventory-open-use': {
+            inventoryOverlayUse.setVisibility(true);
             break;
         }
-        case 'inventory-down': {
-            inventoryOverlay.setVisibility(false);
+        case 'inventory-close-use': {
+            inventoryOverlayUse.setVisibility(false);
             break;
         }
-        case 'inventory-use': {
+        case 'inventory-do-use': {
             let [_, id] = action;
-            inventoryOverlay.setVisibility(false);
+            inventoryOverlayUse.setVisibility(false);
             useItem(player, entities.get(id));
+            break;
+        };
+        case 'inventory-open-drop': {
+            inventoryOverlayDrop.setVisibility(true);
+            break;
+        }
+        case 'inventory-close-drop': {
+            inventoryOverlayDrop.setVisibility(false);
+            break;
+        }
+        case 'inventory-do-drop': {
+            let [_, id] = action;
+            inventoryOverlayDrop.setVisibility(false);
+            dropItem(player, entities.get(id));
             break;
         };
         case 'toggle-debug': {
@@ -482,5 +515,6 @@ function setupInputHandlers(display) {
 
 print("Hello and welcome, adventurer, to yet another dungeon!", 'welcome');
 draw();
-const inventoryOverlay = createInventoryOverlay();
+const inventoryOverlayUse = createInventoryOverlay('use');
+const inventoryOverlayDrop = createInventoryOverlay('drop');
 setupInputHandlers(display);
