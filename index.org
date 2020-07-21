@@ -976,7 +976,7 @@ I decided the way to remember the action is to make two separate inventory overl
 
 This complicates the game state some more, because we need to remember /which/ item is being cast. I think I can do this with the browser's event system. I'll add an overlay during spell casting, and attach event handlers to it that remember the item, and then remove the event handlers and the overlay when the item is used or the action is cancelled.
 
-
+There's a little glitch with this idea: when /clicking/ on the targeting overlay, the game loses focus! For now my workaround is to re-focus the game canvas after receiving a click on the targeting overlay, but I think this isn't a great solution.
 
 #+begin_export html
 <x:footer>

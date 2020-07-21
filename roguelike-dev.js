@@ -279,14 +279,29 @@ function useItem(entity, item) {
         break;
     }
     case 'fireball scroll': {
-        targetingOverlay.open((x, y) => {
-            if (castFireball(entity, x, y)) {
-                moveEntityTo(item, NOWHERE);
-                enemiesMove();
-            }
-            targetingOverlay.close();
-            draw();
-        });
+        targetingOverlay.open(
+            `Click a location to cast fireball, or <kbd>ESC</kbd> to cancel`,
+            (x, y) => {
+                if (castFireball(entity, x, y)) {
+                    moveEntityTo(item, NOWHERE);
+                    enemiesMove();
+                }
+                targetingOverlay.close();
+                draw();
+            });
+        break;
+    }
+    case 'confusion scroll': {
+        targetingOverlay.open(
+            `Click on an enemy to confuse it, or <kbd>ESC</kbd> to cancel`,
+            (x, y) => {
+                if (castConfusion(entity, x, y)) {
+                    moveEntityTo(item, NOWHERE);
+                    enemiesMove();
+                }
+                targetingOverlay.close();
+                draw();
+            });
         break;
     }
     default: {
@@ -351,15 +366,34 @@ function castFireball(caster, x, y) {
 }
 
 /** return true if the item was used */
+function castConfusion(caster, x, y) {
+    let visibleToCaster = computeLightMap(caster.location, tileMap);
+    if (!(visibleToCaster.get(x, y) > 0)) {
+        print(`You cannot target a tile outside your field of view.`, 'warning');
+        return false;
+    }
+
+    let visibleFromFireball = computeLightMap({x, y}, tileMap);
+    let target = blockingEntityAt(x, y);
+    if (target && target.hp !== undefined && !target.dead && target.ai) {
+        target.ai = {behavior: 'confused', turns: 10};
+        print(`The eyes of the ${target.name} look vacant, as it starts to stumble around!`, 'enemy-die');
+        return true;
+    }
+    print(`There is no targetable enemy at that location.`, 'warning');
+    return false;
+}
+
+/** return true if the item was used */
 function castLighting(caster) {
     const maximum_range = 5;
     const damage = 20;
-    let lightMap = computeLightMap(caster.location, tileMap);
+    let visibleToCaster = computeLightMap(caster.location, tileMap);
     let attackables = Array.from(entities.values())
-        .filter(e => e.id !== caster.id) // TODO: maybe opposite faction to avoid friendly fire?
+        .filter(e => e.id !== caster.id)
         .filter(e => e.location.x !== undefined) // on the map
         .filter(e => e.hp !== undefined && !e.dead)
-        .filter(e => lightMap.get(e.location.x, e.location.y) > 0) // visible to the caster
+        .filter(e => visibleToCaster.get(e.location.x, e.location.y) > 0)
         .filter(e => distance(e.location, caster.location) <= maximum_range);
     attackables.sort((a, b) => distance(a.location, caster.location) - distance(b.location, caster.location));
     let target = attackables[0];
@@ -408,34 +442,58 @@ function playerMoveBy(dx, dy) {
 function enemiesMove() {
     let lightMap = computeLightMap(player.location, tileMap);
     for (let entity of entities.values()) {
-        if (!entity.dead && entity.ai && entity.ai.behavior === 'move_to_player' && entity.location.x !== undefined) {
-            if (!(lightMap.get(entity.location.x, entity.location.y) > 0.0)) {
-                // The player can't see the monster, so the monster
-                // can't see the player, so the monster doesn't move
-                continue;
-            }
-            
-            let dx = player.location.x - entity.location.x,
-                dy = player.location.y - entity.location.y;
-
-            // Pick either vertical or horizontal movement randomly
-            let stepx = 0, stepy = 0;
-            if (randint(1, Math.abs(dx) + Math.abs(dy)) <= Math.abs(dx)) {
-                stepx = dx / Math.abs(dx);
-            } else {
-                stepy = dy / Math.abs(dy);
-            }
-            let x = entity.location.x + stepx,
-                y = entity.location.y + stepy;
-            if (tileMap.get(x, y).walkable) {
-                let target = blockingEntityAt(x, y);
-                if (target && target.id === player.id) {
-                    attack(entity, player);
-                } else if (target) {
-                    // another monster there; can't move
-                } else {
-                    moveEntityTo(entity, {x, y});
+        if (!entity.dead && entity.location.x !== undefined && entity.ai) {
+            switch (entity.ai.behavior) {
+            case 'move_to_player': {
+                if (!(lightMap.get(entity.location.x, entity.location.y) > 0.0)) {
+                    // The player can't see the monster, so the monster
+                    // can't see the player, so the monster doesn't move
+                    continue;
                 }
+                
+                let dx = player.location.x - entity.location.x,
+                    dy = player.location.y - entity.location.y;
+
+                // Pick either vertical or horizontal movement randomly
+                let stepx = 0, stepy = 0;
+                if (randint(1, Math.abs(dx) + Math.abs(dy)) <= Math.abs(dx)) {
+                    stepx = dx / Math.abs(dx);
+                } else {
+                    stepy = dy / Math.abs(dy);
+                }
+                let x = entity.location.x + stepx,
+                    y = entity.location.y + stepy;
+                if (tileMap.get(x, y).walkable) {
+                    let target = blockingEntityAt(x, y);
+                    if (target && target.id === player.id) {
+                        attack(entity, player);
+                    } else if (target) {
+                        // another monster there; can't move
+                    } else {
+                        moveEntityTo(entity, {x, y});
+                    }
+                }
+                break;
+            }
+            case 'confused': {
+                if (--entity.ai.turns > 0) {
+                    let stepx = randint(-1, 1), stepy = randint(-1, 1);
+                    let x = entity.location.x + stepx,
+                        y = entity.location.y + stepy;
+                    if (tileMap.get(x, y).walkable) {
+                        if (!blockingEntityAt(x, y)) {
+                            moveEntityTo(entity, {x, y});
+                        }
+                    }
+                } else {
+                    entity.ai = {behavior: 'move_to_player'};
+                    print(`The ${entity.name} is no longer confused!`, 'enemy-attack');
+                }
+                break;
+            }
+            default: {
+                throw `unknown enemy ai: ${entity.ai}`;
+            }
             }
         }
     }
@@ -463,11 +521,11 @@ function createTargetingOverlay() {
     
     return {
         get visible() { return visible; },
-        open(callback_) {
+        open(instructions, callback_) {
             visible = true;
             callback = callback_;
             overlay.classList.add('visible');
-            overlay.innerHTML = `<div>Pick a target</div>`;
+            overlay.innerHTML = `<div>${instructions}</div>`;
         },
         close() {
             visible = false;
@@ -544,7 +602,7 @@ function handleInventoryKeys(action) {
 }
 
 function handleTargetingKeys(keyCode) {
-    return keyCode === ROT.KEYS.VK_ESCAPE? ['targeting-close'] : undefined;
+    return keyCode === ROT.KEYS.VK_ESCAPE? ['targeting-cancel'] : undefined;
 }
 
 function runAction(action) {
@@ -560,6 +618,7 @@ function runAction(action) {
     case 'inventory-close-use':  { inventoryOverlayUse.close();  break; }
     case 'inventory-open-drop':  { inventoryOverlayDrop.open();  break; }
     case 'inventory-close-drop': { inventoryOverlayDrop.close(); break; }
+    case 'targeting-cancel':     { targetingOverlay.close();     break; }
 
     case 'inventory-do-use': {
         let [_, id] = action;
@@ -586,7 +645,7 @@ function runAction(action) {
 function handleKeyDown(event) {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) { return; }
     let handleKeys =
-        targetingOverlay.visible? handleTargetingKeys()
+        targetingOverlay.visible? handleTargetingKeys
         : inventoryOverlayUse.visible? handleInventoryKeys('use')
         : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
         : handlePlayerKeys;
