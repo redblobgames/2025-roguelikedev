@@ -50,11 +50,14 @@ const setOverlayMessage = (() => {
 
 /** Entity properties that are shared among all the instances of the type */
 const ENTITY_PROPERTIES = {
-    player: { blocks: true, item: false, render_order: 9, visuals: ['@', "hsl(60, 100%, 70%)"], },
-    troll:  { blocks: true, item: false, render_order: 6, visuals: ['T', "hsl(120, 60%, 30%)"], },
-    orc:    { blocks: true, item: false, render_order: 6, visuals: ['o', "hsl(100, 30%, 40%)"], },
-    corpse: { blocks: false, item: false, render_order: 0, visuals: ['%', "darkred"], },
-    'healing potion': { blocks: false, item: true, render_order: 1, visuals: ['!', "violet"], },
+    player: { blocks: true, render_order: 9, visuals: ['@', "hsl(60, 100%, 70%)"], },
+    troll:  { blocks: true, render_order: 6, visuals: ['T', "hsl(120, 60%, 30%)"], },
+    orc:    { blocks: true, render_order: 6, visuals: ['o', "hsl(100, 30%, 40%)"], },
+    corpse: { blocks: false, render_order: 0, visuals: ['%', "darkred"], },
+    'healing potion': { item: true, render_order: 1, visuals: ['!', "violet"], },
+    'lightning scroll': { item: true, render_order: 1, visuals: ['#', "hsl(60, 50%, 75%)"], },
+    'fireball scroll': { item: true, render_order: 1, visuals: ['#', "hsl(0, 50%, 50%)"], },
+    'confusion scroll': { item: true, render_order: 1, visuals: ['#', "hsl(0, 100%, 75%)"], },
 };
 /* always use the current value of 'type' to get the entity properties,
     so that we can change the object type later (e.g. to 'corpse') */
@@ -68,7 +71,8 @@ const entity_prototype = {
 /* Schema:
  * location: {x:int, y:int} | {carried:id, slot:int} -- latter allowed only if .item === true
  * inventory: Array<null|int> - should only contain entities with .item === true
-*/
+ */
+const NOWHERE = {x: -1, y: -1}; // TODO: figure out a better location
 let entities = new Map();
 function createEntity(type, location, properties={}) {
     let id = ++createEntity.id;
@@ -80,6 +84,11 @@ function createEntity(type, location, properties={}) {
     return entity;
 }
 createEntity.id = 0;
+
+/** euclidean distance */
+function distance(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+}
 
 /** return all entities at (x,y) */
 function allEntitiesAt(x, y) {
@@ -149,7 +158,12 @@ function populateRoom(room, maxMonstersPerRoom, maxItemsPerRoom) {
         let x = randint(room.getLeft(), room.getRight()),
             y = randint(room.getTop(), room.getBottom());
         if (allEntitiesAt(x, y).length === 0) {
-            createEntity('healing potion', {x, y});
+            let item_chance = randint(0, 99);
+            createEntity(
+                item_chance < 75? 'healing potion'
+                    : item_chance < 80? 'fireball scroll'
+                    : item_chance < 90? 'confusion scroll'
+                    : 'lightning scroll', {x, y});
         }
     }
 }
@@ -244,17 +258,40 @@ function draw() {
 
 
 function useItem(entity, item) {
-    if (item.type == 'healing potion') {
+    switch (item.type) {
+    case 'healing potion': {
         if (entity.hp === entity.max_hp) {
             print(`You are already at full health`, 'warning');
         } else {
             print(`Your wounds start to feel better!`, 'healing');
             entity.hp = ROT.Util.clamp(entity.hp + 4, 0, entity.max_hp);
-            moveEntityTo(item, {x: -1, y: -1}); // TODO: better place to move it
+            moveEntityTo(item, NOWHERE);
             enemiesMove();
         }
-    } else {
+        break;
+    }
+    case 'lightning scroll': {
+        if (castLighting(entity)) {
+            moveEntityTo(item, NOWHERE);
+            enemiesMove();
+            draw();
+        }
+        break;
+    }
+    case 'fireball scroll': {
+        targetingOverlay.open((x, y) => {
+            if (castFireball(entity, x, y)) {
+                moveEntityTo(item, NOWHERE);
+                enemiesMove();
+            }
+            targetingOverlay.close();
+            draw();
+        });
+        break;
+    }
+    default: {
         throw `useItem on unknown item ${item}`;
+    }
     }
 }
 
@@ -268,7 +305,7 @@ function dropItem(entity, item) {
 function takeDamage(target, amount) {
     target.hp -= amount;
     if (target.hp <= 0) {
-        print(`${target.name} dies!`, 'enemy-die');
+        print(`${target.name} dies!`, target.id === player.id? 'player-die' : 'enemy-die');
         target.dead = true;
         target.type = 'corpse';
         target.name = `${target.name}'s corpse`;
@@ -285,6 +322,54 @@ function attack(attacker, defender) {
     } else {
         print(`${attacker.name} attacks ${defender.name} but does no damage.`, color);
     }
+}
+
+/** return true if the item was used */
+function castFireball(caster, x, y) {
+    const maximum_range = 3;
+    const damage = 12;
+    let visibleToCaster = computeLightMap(caster.location, tileMap);
+    if (!(visibleToCaster.get(x, y) > 0)) {
+        print(`You cannot target a tile outside your field of view.`, 'warning');
+        return false;
+    }
+
+    let visibleFromFireball = computeLightMap({x, y}, tileMap);
+    let attackables = Array.from(entities.values())
+        .filter(e => e.location.x !== undefined) // on the map
+        .filter(e => e.hp !== undefined && !e.dead)
+        .filter(e => visibleFromFireball.get(e.location.x, e.location.y) > 0)
+        .filter(e => visibleToCaster.get(e.location.x, e.location.y) > 0)
+        .filter(e => distance(e.location, {x, y}) <= maximum_range);
+
+    print(`The fireball explodes, burning everything within ${maximum_range} tiles!`, 'player-attack');
+    for (let target of attackables) {
+        print(`The ${target.name} gets burned for ${damage} hit points.`, 'player-attack');
+        takeDamage(target, damage);
+    }
+    return true;
+}
+
+/** return true if the item was used */
+function castLighting(caster) {
+    const maximum_range = 5;
+    const damage = 20;
+    let lightMap = computeLightMap(caster.location, tileMap);
+    let attackables = Array.from(entities.values())
+        .filter(e => e.id !== caster.id) // TODO: maybe opposite faction to avoid friendly fire?
+        .filter(e => e.location.x !== undefined) // on the map
+        .filter(e => e.hp !== undefined && !e.dead)
+        .filter(e => lightMap.get(e.location.x, e.location.y) > 0) // visible to the caster
+        .filter(e => distance(e.location, caster.location) <= maximum_range);
+    attackables.sort((a, b) => distance(a.location, caster.location) - distance(b.location, caster.location));
+    let target = attackables[0];
+    if (!target) {
+        print(`No enemy is close enough to strike.`, 'error');
+        return false;
+    }
+    print(`A lighting bolt strikes the ${target.name} with a loud thunder! The damage is ${damage}`, 'player-attack');
+    takeDamage(target, damage);
+    return true;
 }
 
 function playerPickupItem() {
@@ -356,9 +441,43 @@ function enemiesMove() {
     }
 }
 
+function createTargetingOverlay() {
+    const overlay = document.querySelector(`#targeting`);
+    let visible = false;
+    let callback = () => { throw `set callback`; };
+
+    function onClick(event) {
+        let [x, y] = display.eventToPosition(event);
+        callback(x, y);
+        // Ugh, the overlay is nice for capturing mouse events but
+        // when you click, the game loses focus. Workaround:
+        display.getContainer().focus();
+    }
+    function onMouseMove(event) {
+        let [x, y] = display.eventToPosition(event);
+        // TODO: feedback
+    }
+    
+    overlay.addEventListener('click', onClick);
+    overlay.addEventListener('mousemove', onMouseMove);
+    
+    return {
+        get visible() { return visible; },
+        open(callback_) {
+            visible = true;
+            callback = callback_;
+            overlay.classList.add('visible');
+            overlay.innerHTML = `<div>Pick a target</div>`;
+        },
+        close() {
+            visible = false;
+            overlay.classList.remove('visible');
+        },
+    };
+}
 
 function createInventoryOverlay(action) {
-    const overlay = document.querySelector(`#inventory-overlay-${action}`);
+    const overlay = document.querySelector(`#inventory-${action}`);
     let visible = false;
 
     function draw() {
@@ -382,11 +501,8 @@ function createInventoryOverlay(action) {
     
     return {
         get visible() { return visible; },
-        setVisibility(visibility) {
-            visible = visibility;
-            overlay.classList.toggle('visible', visibility);
-            if (visible) draw();
-        },
+        open() { visible = true; overlay.classList.add('visible'); draw(); },
+        close() { visible = false; overlay.classList.remove('visible'); },
     };
 }
 
@@ -427,10 +543,51 @@ function handleInventoryKeys(action) {
     };
 }
 
+function handleTargetingKeys(keyCode) {
+    return keyCode === ROT.KEYS.VK_ESCAPE? ['targeting-close'] : undefined;
+}
+
+function runAction(action) {
+    switch (action[0]) {
+    case 'move': {
+        let [_, dx, dy] = action;
+        playerMoveBy(dx, dy);
+        break;
+    }
+
+    case 'pickup':               { playerPickupItem();           break; }
+    case 'inventory-open-use':   { inventoryOverlayUse.open();   break; }
+    case 'inventory-close-use':  { inventoryOverlayUse.close();  break; }
+    case 'inventory-open-drop':  { inventoryOverlayDrop.open();  break; }
+    case 'inventory-close-drop': { inventoryOverlayDrop.close(); break; }
+
+    case 'inventory-do-use': {
+        let [_, id] = action;
+        inventoryOverlayUse.close();
+        useItem(player, entities.get(id));
+        break;
+    };
+    case 'inventory-do-drop': {
+        let [_, id] = action;
+        inventoryOverlayDrop.close();
+        dropItem(player, entities.get(id));
+        break;
+    };
+    case 'toggle-debug': {
+        DEBUG_ALL_EXPLORED = !DEBUG_ALL_EXPLORED;
+        break;
+    }
+    default:
+        throw `unhandled action ${action}`;
+    }
+    draw();
+}
+
 function handleKeyDown(event) {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) { return; }
     let handleKeys =
-          inventoryOverlayUse.visible? handleInventoryKeys('use')
+        targetingOverlay.visible? handleTargetingKeys()
+        : inventoryOverlayUse.visible? handleInventoryKeys('use')
         : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
         : handlePlayerKeys;
     let action = handleKeys(event.keyCode);
@@ -440,52 +597,7 @@ function handleKeyDown(event) {
     }
     if (action) {
         event.preventDefault();
-        switch (action[0]) {
-        case 'move': {
-            let [_, dx, dy] = action;
-            playerMoveBy(dx, dy);
-            break;
-        }
-        case 'pickup': {
-            playerPickupItem();
-            break;
-        }
-        case 'inventory-open-use': {
-            inventoryOverlayUse.setVisibility(true);
-            break;
-        }
-        case 'inventory-close-use': {
-            inventoryOverlayUse.setVisibility(false);
-            break;
-        }
-        case 'inventory-do-use': {
-            let [_, id] = action;
-            inventoryOverlayUse.setVisibility(false);
-            useItem(player, entities.get(id));
-            break;
-        };
-        case 'inventory-open-drop': {
-            inventoryOverlayDrop.setVisibility(true);
-            break;
-        }
-        case 'inventory-close-drop': {
-            inventoryOverlayDrop.setVisibility(false);
-            break;
-        }
-        case 'inventory-do-drop': {
-            let [_, id] = action;
-            inventoryOverlayDrop.setVisibility(false);
-            dropItem(player, entities.get(id));
-            break;
-        };
-        case 'toggle-debug': {
-            DEBUG_ALL_EXPLORED = !DEBUG_ALL_EXPLORED;
-            break;
-        }
-        default:
-            throw `unhandled action ${action}`;
-        }
-        draw();
+        runAction(action);
     }
 }
 
@@ -517,4 +629,5 @@ print("Hello and welcome, adventurer, to yet another dungeon!", 'welcome');
 draw();
 const inventoryOverlayUse = createInventoryOverlay('use');
 const inventoryOverlayDrop = createInventoryOverlay('drop');
+const targetingOverlay = createTargetingOverlay();
 setupInputHandlers(display);

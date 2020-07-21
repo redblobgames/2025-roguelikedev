@@ -10,8 +10,9 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
   <div id="status-bar"/>
   <div id="health-bar"/>
   <div id="health-text"/>
-  <div id="inventory-overlay-use" class="inventory-overlay"/>
-  <div id="inventory-overlay-drop" class="inventory-overlay"/>
+  <div id="inventory-use" class="overlay"/>
+  <div id="inventory-drop" class="overlay"/>
+  <div id="targeting" class="overlay"/>
   <div id="messages"/>
   <div id="message-overlay"/>
   <div id="instructions"/>
@@ -953,7 +954,7 @@ function moveEntityTo(entity, location) {
 
 This logic is tricky enough that I want to make sure I have plenty of assertions in there!
 
-* Inventory UI
+* Inventory actions
 
 Part 8 also introduces an inventory UI. Since the browser already provides multiple UI elements, I wanted to try using them instead of creating my own as the Python version is forced to do. I created a new overlay ~<div id="inventory-overlay">~ and hid it when not in use.
 
@@ -965,8 +966,15 @@ The inventory UI gets used for two actions: /use/ and /drop/. When invoking the 
 
 I decided the way to remember the action is to make two separate inventory overlays. I can apply different styling to them, but have them share common code.
 
+* Ranged scrolls and targeting
 
+[[http://rogueliketutorials.com/tutorials/tcod/part-9/][Part 9]] adds new items:
 
+- a lighting scroll that will attack the nearest visible enemy
+- a fireball scroll that lets you click on an enemy to attack
+- a confuse scroll that lets you click on an enemy to confuse
+
+This complicates the game state some more, because we need to remember /which/ item is being cast. I think I can do this with the browser's event system. I'll add an overlay during spell casting, and attach event handlers to it that remember the item, and then remove the event handlers and the overlay when the item is used or the action is cancelled.
 
 
 
@@ -999,7 +1007,7 @@ I decided the way to remember the action is to make two separate inventory overl
           opacity: 1.0;
       }
 
-      .inventory-overlay {
+      .overlay {
           grid-area: game;
           z-index: 0;
           height: auto;
@@ -1010,39 +1018,45 @@ I decided the way to remember the action is to make two separate inventory overl
           font-size: 0.8em;
           opacity: 0;
       }
-      #inventory-overlay-use {
-          background: hsl(200, 10%, 20%);
-          color: white;
-      }
-      #inventory-overlay-drop {
-          background: hsl(0, 20%, 20%);
-          color: white;
-      }
-      .inventory-overlay.visible {
+      .overlay.visible {
           z-index: 2;
           opacity: 1;
       }
-      .inventory-overlay ul {
+      .overlay ul {
           column-count: 2;
           column-gap: 1em;
           column-fill: balance;
       }
-      .inventory-overlay li {
+      .overlay li {
           list-style-type: none;
       }
-      .inventory-overlay kbd {
+      .overlay kbd {
           display: inline-block;
           border: 1px solid hsl(150, 60%, 30%);
           padding: 2px 4px;
           font-weight: normal;
       }
-      #inventory-overlay-use kbd {
+      #inventory-use {
+          background: hsl(200, 10%, 20%);
+          color: white;
+      }
+      #inventory-drop {
+          background: hsl(0, 20%, 20%);
+          color: white;
+      }
+      #inventory-use kbd {
           background: hsl(150, 50%, 30%);
           color: cyan;
       }
-      #inventory-overlay-drop kbd {
+      #inventory-drop kbd {
           background: hsl(60, 50%, 30%);
           color: yellow;
+      }
+      #targeting {
+          background: hsla(60, 10%, 100%, 0.1);
+          color: white;
+          text-align: center;
+          height: 100%;
       }
 
       #instructions {
@@ -1081,6 +1095,7 @@ I decided the way to remember the action is to make two separate inventory overl
       #messages > div.enemy-attack  { color: hsl(  0,  50%,  80%); }
       #messages > div.enemy-die     { color: hsl(150,  30%,  70%); }
       #messages > div.warning       { color: hsl( 60,  50%,  70%); }
+      #messages > div.error         { color: hsl(  0,  75%,  50%); }
       #messages > div.pick-up       { color: hsl(220,  50%,  80%); }
       #messages > div.healing       { color: hsl(150,  50%,  70%); }
 
