@@ -1075,7 +1075,49 @@ Now I can save to a string and restore from a string. The Python tutorial saves 
 1. I could save to =localStorage= every turn, and load from it when opening the page. There'd also be a key to start a new game.
 1. I could have a key to save and a key to load, and I could rely on reloading the page to start a new game.
 
-The Python tutorial does a lot more to restructure the code but I didn't feel the need to do any of that.
+I decided on 2. I used the Python tutorial's keys: ~b~ to load, ~c~ to save.
+
+It all works nicely! /Except…/
+
+I didn't serialize the messages. I thought it'd be no big deal but it doesn't look right. My =print()= function directly writes to the page. I changed =print()= to append to a global =messages= array:
+
+#+begin_src js
+const MAX_MESSAGE_LINES = 100;
+let messages = []; // [text, className]
+function print(message, className) {
+    messages.push([message, className]);
+    messages.splice(0, messages.length - MAX_MESSAGE_LINES);
+    drawMessages();
+}
+#+end_src
+
+And then I have a separate function to draw that array to the page:
+
+#+begin_src js
+function drawMessages() {
+    let messageBox = document.querySelector("#messages");
+    // If there are more messages than there are <div>s, add some
+    while (messageBox.children.length < messages.length) {
+        messageBox.appendChild(document.createElement('div'));
+    }
+    // Remove any extra <div>s
+    while (messages.length < messageBox.children.length) {
+        messageBox.removeChild(messageBox.lastChild);
+    }
+    // Update the <div>s to have the right message text and color
+    for (let line = 0; line < messages.length; line++) {
+        let div = messageBox.children[line];
+        div.textContent = messages[line][0];
+        div.setAttribute('class', messages[line][1]);
+    }
+    // Scroll to the bottom
+    messageBox.scrollTop = messageBox.scrollHeight;
+}
+#+end_src
+
+Much better!
+
+The Python tutorial does a lot of other things to restructure the code but I didn't feel the need to do any of that.
 
 * Delving into the Dungeon
 

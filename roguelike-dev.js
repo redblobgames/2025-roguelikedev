@@ -26,20 +26,33 @@ const randint = ROT.RNG.getUniformInt.bind(ROT.RNG);
 
 
 /** console messages */
-const print = (() => {
-    const MAX_LINES = 100;
-    let messages = document.querySelector("#messages");
-    return function(message, className) {
-        let line = document.createElement('div');
-        line.textContent = message;
-        line.setAttribute('class', className);
-        messages.appendChild(line);
-        while (messages.children.length > MAX_LINES) {
-            messages.removeChild(messages.children[0]);
-        }
-        messages.scrollTop = messages.scrollHeight;
-    };
-})();
+const MAX_MESSAGE_LINES = 100;
+let messages = []; // [text, className]
+function drawMessages() {
+    let messageBox = document.querySelector("#messages");
+    // If there are more messages than there are <div>s, add some
+    while (messageBox.children.length < messages.length) {
+        messageBox.appendChild(document.createElement('div'));
+    }
+    // Remove any extra <div>s
+    while (messages.length < messageBox.children.length) {
+        messageBox.removeChild(messageBox.lastChild);
+    }
+    // Update the <div>s to have the right message text and color
+    for (let line = 0; line < messages.length; line++) {
+        let div = messageBox.children[line];
+        div.textContent = messages[line][0];
+        div.setAttribute('class', messages[line][1]);
+    }
+    // Scroll to the bottom
+    messageBox.scrollTop = messageBox.scrollHeight;
+}
+
+function print(message, className) {
+    messages.push([message, className]);
+    messages.splice(0, messages.length - MAX_MESSAGE_LINES);
+    drawMessages();
+}
 
 /** overlay messages - hide if text is empty, optionally clear automatically */
 const [setOverlayMessage, setTemporaryOverlayMessage] = (() => {
@@ -277,8 +290,9 @@ function draw() {
 function serializeGlobalState() {
     const saved = {
         entities: Array.from(entities),
-        tileMap: tileMap,
         playerId: player.id,
+        tileMap: tileMap,
+        messages: messages,
         nextEntityId: createEntity.id,
         rngState: ROT.RNG.getState(),
     }; // TODO: message log
@@ -291,8 +305,9 @@ function deserializeGlobalState(json) {
     const saved = JSON.parse(json);
     entities = new Map(saved.entities.map(reattachEntityPrototype));
     createEntity.id = saved.nextEntityid;
-    Object.assign(tileMap, saved.tileMap);
     player = entities.get(saved.playerId);
+    Object.assign(tileMap, saved.tileMap);
+    messages = saved.messages;
     ROT.RNG.setState(saved.rngState);
 }
 
@@ -698,6 +713,7 @@ function runAction(action) {
         } else {
             setTemporaryOverlayMessage("Loaded game.");
             deserializeGlobalState(json);
+            drawMessages();
             draw();
         }
         break;
