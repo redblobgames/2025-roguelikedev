@@ -640,7 +640,6 @@ function createInventoryOverlay(action) {
 function handlePlayerDeadKeys(keyCode) {
     const actions = {
         [ROT.KEYS.VK_O]:     () => ['toggle-debug'],
-        [ROT.KEYS.VK_C]:     () => ['save-game'],
         [ROT.KEYS.VK_B]:     () => ['load-game'],
     };
     let action = actions[keyCode];
@@ -656,6 +655,7 @@ function handlePlayerKeys(keyCode) {
         [ROT.KEYS.VK_G]:     () => ['pickup'],
         [ROT.KEYS.VK_U]:     () => ['inventory-open-use'],
         [ROT.KEYS.VK_D]:     () => ['inventory-open-drop'],
+        [ROT.KEYS.VK_C]:     () => ['save-game'],
     };
     let action = actions[keyCode];
     return action ? action() : handlePlayerDeadKeys(keyCode);
@@ -740,12 +740,9 @@ function handleKeyDown(event) {
         targetingOverlay.visible? handleTargetingKeys
         : inventoryOverlayUse.visible? handleInventoryKeys('use')
         : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
+        : player.dead? handlePlayerDeadKeys
         : handlePlayerKeys;
     let action = handleKeys(event.keyCode);
-    if (player.dead) {
-        print("You are dead.", 'player-die');
-        return;
-    }
     if (action) {
         event.preventDefault();
         runAction(action);
