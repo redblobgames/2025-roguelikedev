@@ -21,11 +21,15 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
 
 Source code: [[href:roguelike-dev.js][roguelike-dev.js]]
 
-* Getting started
+* Drawing the ‘@’ symbol and moving it around
 
 #+TOC: headlines 2
 
-I'm going to follow the [[http://rogueliketutorials.com/tutorials/tcod/][Roguelike Tutorial for Python]] (2019 version, not the 2020 version, for various reasons) and adapt it for [[https://ondras.github.io/rot.js/hp/][rot.js]]. [[http://rogueliketutorials.com/tutorials/tcod/part-0/][Part 0]] of the tutorial covers setting up Python and libtcod. I'll instead set up rot.js.
+I'm going to follow the [[http://rogueliketutorials.com/tutorials/tcod/][Roguelike Tutorial for Python]] (2019 version, not the 2020 version, for various reasons) and adapt it for [[https://ondras.github.io/rot.js/hp/][rot.js]]. 
+
+** Setup
+
+[[http://rogueliketutorials.com/tutorials/tcod/part-0/][Part 0]] of the tutorial covers setting up Python and libtcod. I'll instead set up rot.js.
 
 HTML:
 
@@ -50,7 +54,7 @@ Set the =fontFamily= property if you want to override the default browser monosp
 
 A warning about my coding style: I follow /make it work before making the code nice/. That means I'll use plenty of global variables and hacks at first, and clean up some of them later. Don't look at my code as an example of how to structure a program "properly".
 
-* Key input
+** Key input
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-1/][Part 1 of the roguelike tutorial]] covers setting up a screen and keyboard handler. I already set up the screen in the previous section so now I need to set up a keyboard handler. Unlike Python, we don't write an event loop in the browser. The browser already is running an event loop, and we add event handlers to it. 
 
@@ -113,7 +117,7 @@ I often start out with a =console.log= to make sure that a function is getting c
 
 What's next for Part 1? I need to make arrow keys move the player around. I can't do that yet, because I don't have a player position.
 
-* Player movement
+** Player movement
 
 I need to keep track of the player position and then change it when a key is pressed.
 
@@ -193,7 +197,7 @@ What else is in Part 1 of the tutorial?
 
 I'm going to skip these two.
 
-* Entities
+* The generic Entity, the render functions, and the map
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-2/][Part 2]] of the tutorial covers entities. My design differs slightly from the tutorial:
 
@@ -279,7 +283,7 @@ function draw() {
 }
 #+end_src
 
-* Map
+* Generating a dungeon
 
 The second half of [[http://rogueliketutorials.com/tutorials/tcod/part-2/][Part 2]] creates a map data structure, and Part 3 generates a dungeon map.  ROT.js includes dungeon map creation functions so I'll use one of their algorithms. ROT will call a callback function for each map tile, 0 for walkable and 1 for wall. I'm going to store this data in a Map, indexed by a string =x,y=. For example at position x=3, y=5, I'll use a string key ="3,5"=.
 
@@ -557,7 +561,7 @@ And hey, it works!
 
 [[./screenshots/8.png]]
 
-* Enemies
+* Placing enemies and kicking them (harmlessly)
 
 Part 5 of the Python tutorial adds monsters to rooms.
 
@@ -669,7 +673,7 @@ The orc ponders the meaning of its existence.
 
 Great! Before I move on to the next part of the tutorial, I wanted to add a way to see the messages under the game screen.
 
-* Console
+** Console
 
 I updated the UI to have an extra div for messages, and put the instructions box below it. This is covered in the Python tutorial part 7, but I implemented it earlier:
 
@@ -733,7 +737,7 @@ Here's what it looks like:
 Back to the Python tutorial.
 
 
-* Combat
+* Doing (and taking) some damage
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-6/][Part 6]] of the Python roguelike tutorial adds a “fighter” component with hp, max_hp, defense, power, and an “ai” component that tells the monster how to move.
 
@@ -778,7 +782,9 @@ It's starting to come together!
 
 [[./screenshots/13.png]]
 
-* Health bar
+* Creating the Interface
+
+** Health bar
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-7/][Part 7]] of the Python tutorial covers three topics:
 
@@ -790,7 +796,7 @@ I already implemented the message area earlier. It's in HTML instead of in ROT.j
 
 [[./screenshots/14.png]]
 
-* Message area, part 2
+** Message area, part 2
 
 I also improved the message area:
 
@@ -806,7 +812,7 @@ Version 2 of the Python tutorial also adds a way to scroll the message area, int
 
 I think it wouldn't be hard to add color /within/ lines. I did that with [[http://www-cs-students.stanford.edu/~amitp/Articles/SRE-Documentation.html][my DOS games]] and liked the effect. But for now I'm sticking to implementing the features from version 1 of the Python tutorial.
 
-* Mouse info
+** Mouse info
 
 The Python tutorial fits the mouse handling into the main event loop but the browser has its own event loop, so I deviated from the tutorial's approach.
 
@@ -904,9 +910,13 @@ But … this broke the message area scrolling! The problem is that the scroll mo
 
 While I was at it, I also added a fade-out effect using =transition: all 0.3s= to =#message-overlay= and =transition: all 0s= to =#message-overlay.visible=. When making the overlay visible, it will have no transition (0s) but when making the overlay invisible it will use a quick transition (0.3s).
 
-* Items and inventory
+* Items and Inventory
 
-Part 8 of the Python tutorial covers items and inventory. I decided to use a different representation than they use. To pick up an item, they /remove/ the entity from the global =entities= array, and then ignore the =x= and =y= fields on it.
+Part 8 of the Python tutorial covers items and inventory. 
+
+** Items and locations
+
+I decided to use a different representation than they use. To pick up an item, they /remove/ the entity from the global =entities= array, and then ignore the =x= and =y= fields on it.
 
 - instead of entities having =x= and =y=, they have =location=, which can be either
   - ={x:int, y:int}= if the entity is on the map, or
@@ -954,7 +964,7 @@ function moveEntityTo(entity, location) {
 
 This logic is tricky enough that I want to make sure I have plenty of assertions in there!
 
-* Inventory actions
+** Inventory actions
 
 Part 8 also introduces an inventory UI. Since the browser already provides multiple UI elements, I wanted to try using them instead of creating my own as the Python version is forced to do. I created a new overlay ~<div id="inventory-overlay">~ and hid it when not in use.
 
@@ -965,6 +975,8 @@ I had hoped to try using the focused element status from the browser to keep tra
 The inventory UI gets used for two actions: /use/ and /drop/. When invoking the action, I need to remember which action I'll perform when the inventory item is selected. This also affects the text the player sees at the top of the dialog box.
 
 I decided the way to remember the action is to make two separate inventory overlays. I can apply different styling to them, but have them share common code.
+
+/I've been sharing less code as I go along, in part because the refactorings made it harder to show the changes, but also, because I'm spending more time on the code and less on this explanation of it./
 
 * Ranged scrolls and targeting
 
