@@ -48,6 +48,9 @@ const setOverlayMessage = (() => {
     };
 })();
 
+//////////////////////////////////////////////////////////////////////
+// entities
+
 /** Entity properties that are shared among all the instances of the type */
 const ENTITY_PROPERTIES = {
     player: { blocks: true, render_order: 9, visuals: ['@', "hsl(60, 100%, 70%)"], },
@@ -126,7 +129,8 @@ function moveEntityTo(entity, location) {
         if (carrier.inventory[slot] !== null) throw `invalid: inventory already contains an item ${carrier.inventory[slot]} in slot ${slot}`;
         carrier.inventory[slot] = entity.id;
     }
-    // TODO: add constraints for at most one (player|monster) and at most one (item) in any {x, y}
+    // TODO: add constraints for at most one (player|monster)
+    // and at most one (item) in any {x, y}
 }
 
 /** inventory is represented as an array with (null | entity.id) */
@@ -171,10 +175,10 @@ function populateRoom(room, maxMonstersPerRoom, maxItemsPerRoom) {
 function createMap() {
     function key(x, y) { return `${x},${y}`; }
     return {
-        _values: new Map(),
-        has(x, y) { return this._values.has(key(x, y)); },
-        get(x, y) { return this._values.get(key(x, y)); },
-        set(x, y, value) { this._values.set(key(x, y), value); },
+        _values: {},
+        has(x, y) { return this._values[key(x, y)] !== undefined; },
+        get(x, y) { return this._values[key(x, y)]; },
+        set(x, y, value) { this._values[key(x, y)] = value; },
     };
 }
 
@@ -256,6 +260,34 @@ function draw() {
 }
 
 
+//////////////////////////////////////////////////////////////////////
+// saving and loading
+
+function serializeGlobalState() {
+    const saved = {
+        entities: Array.from(entities),
+        tileMap: tileMap,
+        playerId: player.id,
+        nextEntityId: createEntity.id,
+        rngState: ROT.RNG.getState(),
+    }; // TODO: message log
+    return JSON.stringify(saved);
+}
+
+function deserializeGlobalState(json) {
+    const reattachEntityPrototype = entry =>
+          [entry[0], Object.assign(Object.create(entity_prototype), entry[1])];
+    const saved = JSON.parse(json);
+    entities = new Map(saved.entities.map(reattachEntityPrototype));
+    createEntity.id = saved.nextEntityid;
+    Object.assign(tileMap, saved.tileMap);
+    player = entities.get(saved.playerId);
+    ROT.RNG.setState(saved.rngState);
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// items
 
 function useItem(entity, item) {
     switch (item.type) {
@@ -316,6 +348,9 @@ function dropItem(entity, item) {
     enemiesMove();
 }
 
+
+//////////////////////////////////////////////////////////////////////
+// combat
 
 function takeDamage(target, amount) {
     target.hp -= amount;
@@ -406,6 +441,10 @@ function castLighting(caster) {
     return true;
 }
 
+
+//////////////////////////////////////////////////////////////////////
+// player actions
+
 function playerPickupItem() {
     let item = itemEntityAt(player.location.x, player.location.y);
     if (!item) {
@@ -438,6 +477,9 @@ function playerMoveBy(dx, dy) {
         enemiesMove();
     }
 }
+
+//////////////////////////////////////////////////////////////////////
+// monster actions
 
 function enemiesMove() {
     let lightMap = computeLightMap(player.location, tileMap);
@@ -498,6 +540,10 @@ function enemiesMove() {
         }
     }
 }
+
+
+//////////////////////////////////////////////////////////////////////
+// ui
 
 function createTargetingOverlay() {
     const overlay = document.querySelector(`#targeting`);
