@@ -14,6 +14,8 @@ let DEBUG_ALL_EXPLORED = false;
 
 ROT.RNG.setSeed(127);
 
+const STORAGE_KEY = window.location.pathname + '-savegame';
+
 const display = new ROT.Display({width: 60, height: 25, fontSize: 16, fontFamily: 'monospace'});
 display.getContainer().setAttribute('id', "game");
 document.querySelector("figure").appendChild(display.getContainer());
@@ -39,13 +41,22 @@ const print = (() => {
     };
 })();
 
-/** overlay messages - hide if text is empty */
-const setOverlayMessage = (() => {
+/** overlay messages - hide if text is empty, optionally clear automatically */
+const [setOverlayMessage, setTemporaryOverlayMessage] = (() => {
     let area = document.querySelector("#message-overlay");
-    return function(text) {
+    let timeout = 0;
+    function set(text) {
+        clearTimeout(timeout);
         area.textContent = text;
-        area.setAttribute("class", text? "visible" : "");
-    };
+        area.classList.toggle('visible', !!text);
+    }
+    return [
+        set,
+        function(text) {
+            set(text);
+            timeout = setTimeout(() => { area.classList.remove('visible'); }, 1000);
+        }
+    ];
 })();
 
 //////////////////////////////////////////////////////////////////////
@@ -614,6 +625,8 @@ function createInventoryOverlay(action) {
 function handlePlayerDeadKeys(keyCode) {
     const actions = {
         [ROT.KEYS.VK_O]:     () => ['toggle-debug'],
+        [ROT.KEYS.VK_C]:     () => ['save-game'],
+        [ROT.KEYS.VK_B]:     () => ['load-game'],
     };
     let action = actions[keyCode];
     return action ? action() : undefined;
@@ -678,6 +691,23 @@ function runAction(action) {
         dropItem(player, entities.get(id));
         break;
     };
+    case 'load-game': {
+        let json = window.localStorage.getItem(STORAGE_KEY);
+        if (json === null) {
+            setTemporaryOverlayMessage("There is no saved game.");
+        } else {
+            setTemporaryOverlayMessage("Loaded game.");
+            deserializeGlobalState(json);
+            draw();
+        }
+        break;
+    }
+    case 'save-game': {
+        let json = serializeGlobalState();
+        window.localStorage.setItem(STORAGE_KEY, json);
+        setTemporaryOverlayMessage("Saved game.");
+        break;
+    }
     case 'toggle-debug': {
         DEBUG_ALL_EXPLORED = !DEBUG_ALL_EXPLORED;
         break;
@@ -726,7 +756,7 @@ function setupInputHandlers(display) {
     canvas.addEventListener('mousemove', handleMousemove);
     canvas.addEventListener('mouseout', handleMouseout);
     canvas.addEventListener('blur', () => { instructions.textContent = "Click game for keyboard focus"; });
-    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move, g to pick up item"; });
+    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move, g to get, b to load, c to save"; });
     canvas.focus();
 }
 
