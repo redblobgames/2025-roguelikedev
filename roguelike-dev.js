@@ -647,39 +647,38 @@ function createInventoryOverlay(action) {
 }
 
 
-function handlePlayerDeadKeys(keyCode) {
+function handlePlayerDeadKeys(key) {
     const actions = {
-        [ROT.KEYS.VK_O]:     () => ['toggle-debug'],
-        [ROT.KEYS.VK_B]:     () => ['load-game'],
+        o:  ['toggle-debug'],
+        b:  ['load-game'],
     };
-    let action = actions[keyCode];
-    return action ? action() : undefined;
+    return actions[key];
 }
 
-function handlePlayerKeys(keyCode) {
+function handlePlayerKeys(key) {
     const actions = {
-        [ROT.KEYS.VK_RIGHT]: () => ['move', +1, 0],
-        [ROT.KEYS.VK_LEFT]:  () => ['move', -1, 0],
-        [ROT.KEYS.VK_DOWN]:  () => ['move', 0, +1],
-        [ROT.KEYS.VK_UP]:    () => ['move', 0, -1],
-        [ROT.KEYS.VK_L]:     () => ['move', +1, 0],
-        [ROT.KEYS.VK_H]:     () => ['move', -1, 0],
-        [ROT.KEYS.VK_J]:     () => ['move', 0, +1],
-        [ROT.KEYS.VK_K]:     () => ['move', 0, -1],
-        [ROT.KEYS.VK_Z]:     () => ['move', 0, 0],
-        [ROT.KEYS.VK_G]:     () => ['pickup'],
-        [ROT.KEYS.VK_U]:     () => ['inventory-open-use'],
-        [ROT.KEYS.VK_D]:     () => ['inventory-open-drop'],
-        [ROT.KEYS.VK_C]:     () => ['save-game'],
+        ArrowRight:  ['move', +1, 0],
+        ArrowLeft:   ['move', -1, 0],
+        ArrowDown:   ['move', 0, +1],
+        ArrowUp:     ['move', 0, -1],
+        l:           ['move', +1, 0],
+        h:           ['move', -1, 0],
+        j:           ['move', 0, +1],
+        k:           ['move', 0, -1],
+        z:           ['move', 0, 0],
+        g:           ['pickup'],
+        u:           ['inventory-open-use'],
+        d:           ['inventory-open-drop'],
+        c:           ['save-game'],
     };
-    let action = actions[keyCode];
-    return action ? action() : handlePlayerDeadKeys(keyCode);
+    let action = actions[key];
+    return action || handlePlayerDeadKeys(key);
 }
 
 function handleInventoryKeys(action) {
-    return keyCode => {
-        if (keyCode === ROT.KEYS.VK_ESCAPE) { return [`inventory-close-${action}`]; }
-        let slot = keyCode - ROT.KEYS.VK_A;
+    return key => {
+        if (key === 'Escape') { return [`inventory-close-${action}`]; }
+        let slot = key.charCodeAt(0) - 'a'.charCodeAt(0);
         if (0 <= slot && slot < 26) {
             let id = player.inventory[slot];
             if (id !== null) {
@@ -690,8 +689,8 @@ function handleInventoryKeys(action) {
     };
 }
 
-function handleTargetingKeys(keyCode) {
-    return keyCode === ROT.KEYS.VK_ESCAPE? ['targeting-cancel'] : undefined;
+function handleTargetingKeys(key) {
+    return key === 'Escape'? ['targeting-cancel'] : undefined;
 }
 
 function runAction(action) {
@@ -750,14 +749,13 @@ function runAction(action) {
 }
 
 function handleKeyDown(event) {
-    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) { return; }
     let handleKeys =
         targetingOverlay.visible? handleTargetingKeys
         : inventoryOverlayUse.visible? handleInventoryKeys('use')
         : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
         : player.dead? handlePlayerDeadKeys
         : handlePlayerKeys;
-    let action = handleKeys(event.keyCode);
+    let action = handleKeys(event.key);
     if (action) {
         event.preventDefault();
         runAction(action);
