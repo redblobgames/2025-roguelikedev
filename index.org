@@ -1123,6 +1123,8 @@ The Python tutorial does a lot of other things to restructure the code but I did
 
 The Python tutorial has a render order: actor > item > corpse > stairs. That means a corpse will block the stairs if you are in the room, but you can see the stairs once you step outside the field of view. I switched stairs and corpse.
 
+I had hard-coded the player's starting location but that doesn't work when generating new maps, so I checked the Python tutorial to see what they did. They start the player in the first generated room. That sounds like a good solution to me.
+
 * Increasing Difficulty
 
 I'm going to keep following the tutorial but I'm losing interest at this point. I think the problem is that I'm following the tutorial in part to /complete/ something, but I'm not especially interested in /the game itself/. The difficulty levels are about the game design rather than the implementation techniques I want to learn.
@@ -1242,7 +1244,7 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
           margin-bottom: 0.25em;
           text-indent: -1em;
       }
-      #messages > div.welcome       { color: hsl(220,  50%,  70%); }
+      #messages > div.welcome       { color: hsl(300,  50%,  70%); }
       #messages > div.player-attack { color: hsl( 30,  10%,  80%); }
       #messages > div.player-die    { color: hsl(  0, 100%,  50%); }
       #messages > div.enemy-attack  { color: hsl(  0,  50%,  80%); }

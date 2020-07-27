@@ -12,9 +12,9 @@
 
 let DEBUG_ALL_EXPLORED = false;
 
-ROT.RNG.setSeed(127);
-
+const WIDTH = 60, HEIGHT = 25;
 const STORAGE_KEY = window.location.pathname + '-savegame';
+ROT.RNG.setSeed(127);
 
 const display = new ROT.Display({width: 60, height: 25, fontSize: 16, fontFamily: 'monospace'});
 display.getContainer().setAttribute('id', "game");
@@ -90,13 +90,14 @@ const ENTITY_PROPERTIES = {
     'confusion scroll': { item: true, render_order: 2, visuals: ['#', "hsl(0, 100%, 75%)"], },
 };
 /* always use the current value of 'type' to get the entity properties,
-    so that we can change the object type later (e.g. to 'corpse') */
-const entity_prototype = {
-    get item() { return ENTITY_PROPERTIES[this.type].item; },
-    get blocks() { return ENTITY_PROPERTIES[this.type].blocks; },
-    get visuals() { return ENTITY_PROPERTIES[this.type].visuals; },
-    get render_order() { return ENTITY_PROPERTIES[this.type].render_order; },
-};
+    so that we can change the object type later (e.g. to 'corpse'). JS lets
+    us forward these properties to a getter, and I use the getter to get
+    the corresponding value from ENTITY_PROPERTIES. */
+const entity_prototype = {};
+for (let property of ['item', 'blocks', 'stairs', 'visuals', 'render_order']) {
+    Object.defineProperty(entity_prototype, property,
+                          {get() { return ENTITY_PROPERTIES[this.type][property]; }});
+}
 
 /* Schema:
  * location: {x:int, y:int} | {carried:id, slot:int} -- latter allowed only if .item === true
@@ -164,7 +165,7 @@ function createInventoryArray(capacity) {
 }
 
 let player = createEntity(
-    'player', {x: 1, y: 5},
+    'player', NOWHERE,
     {hp: 30, max_hp: 30, defense: 2, power: 5, inventory: createInventoryArray(26)}
 );
 
@@ -181,7 +182,7 @@ function populateRoom(room, maxMonstersPerRoom, maxItemsPerRoom) {
             createEntity(type, {x, y}, props);
         }
     }
-    
+
     const numItems = randint(0, maxItemsPerRoom);
     for (let i = 0; i < numItems; i++) {
         let x = randint(room.getLeft(), room.getRight()),
@@ -207,9 +208,20 @@ function createMap() {
     };
 }
 
-function createTileMap(dungeonLevel, width, height) {
+function updateTileMapFov(tileMap) {
+    // NOTE: this isn't great because I wanted tileMap to have only
+    // the map, and not derived data like this. The map should be in
+    // the save file but this fov should not. It just happens to work
+    // because ROT doesn't expose the fov data in a JSON compatible
+    // way, but it's not a great design.
+    tileMap.fov = new ROT.FOV.PreciseShadowcasting(
+        (x, y) => tileMap.has(x, y) && tileMap.get(x, y).walkable
+    );
+}
+    
+function createTileMap(dungeonLevel) {
     let tileMap = createMap();
-    const digger = new ROT.Map.Digger(width, height);
+    const digger = new ROT.Map.Digger(WIDTH, HEIGHT);
     digger.create((x, y, contents) =>
         tileMap.set(x, y, {
             walkable: contents === 0,
@@ -221,26 +233,30 @@ function createTileMap(dungeonLevel, width, height) {
     tileMap.rooms = digger.getRooms();
     tileMap.corridors = digger.getCorridors();
 
-    // Put stairs in the first room
-    let [stairX, stairY] = tileMap.rooms[0].getCenter();
+    // Put the player in the first room
+    let [playerX, playerY] = tileMap.rooms[0].getCenter();
+    moveEntityTo(player, {x: playerX, y: playerY});
+
+    // Put stairs in the last room
+    let [stairX, stairY] = tileMap.rooms[tileMap.rooms.length-1].getCenter();
     createEntity('stairs', {x: stairX, y: stairY});
-    
+
     // Put monster and items in all the rooms
     for (let room of tileMap.rooms) {
         populateRoom(room, 3, 2);
     }
-    
+
+    updateTileMapFov(tileMap);
     return tileMap;
 }
-const WIDTH = 60, HEIGHT = 25;
-let tileMap = createTileMap(1, WIDTH, HEIGHT);
 
-const fov = new ROT.FOV.PreciseShadowcasting((x, y) => tileMap.has(x, y) && tileMap.get(x, y).walkable);
+let tileMap = createTileMap(1);
+
 
 
 function computeLightMap(center, tileMap) {
     let lightMap = createMap(); // 0.0–1.0
-    fov.compute(center.x, center.y, 10, (x, y, r, visibility) => {
+    tileMap.fov.compute(center.x, center.y, 10, (x, y, r, visibility) => {
         lightMap.set(x, y, visibility);
         if (visibility > 0.0) {
             if (tileMap.has(x, y))
@@ -270,10 +286,10 @@ function draw() {
 
     document.querySelector("#health-bar").style.width = `${Math.ceil(100*player.hp/player.max_hp)}%`;
     document.querySelector("#health-text").textContent = ` HP: ${player.hp} / ${player.max_hp}`;
-    
+
     let lightMap = computeLightMap(player.location, tileMap);
     let glyphMap = computeGlyphMap(entities);
-    
+
     for (let y = 0; y < HEIGHT; y++) {
         for (let x = 0; x < WIDTH; x++) {
             let tile = tileMap.get(x, y);
@@ -305,7 +321,7 @@ function serializeGlobalState() {
         messages: messages,
         nextEntityId: createEntity.id,
         rngState: ROT.RNG.getState(),
-    }; // TODO: message log
+    };
     return JSON.stringify(saved);
 }
 
@@ -317,6 +333,7 @@ function deserializeGlobalState(json) {
     createEntity.id = saved.nextEntityid;
     player = entities.get(saved.playerId);
     Object.assign(tileMap, saved.tileMap);
+    updateTileMapFov(tileMap);
     messages = saved.messages;
     ROT.RNG.setState(saved.rngState);
 }
@@ -379,7 +396,7 @@ function useItem(entity, item) {
 }
 
 function dropItem(entity, item) {
-    moveEntityTo(item, player.location); // TODO: only one item per map tile?
+    moveEntityTo(item, player.location);
     print(`You dropped ${item.name} on the ground`, 'warning');
     enemiesMove();
 }
@@ -487,7 +504,7 @@ function playerPickupItem() {
         print(`There is nothing here to pick up.`, 'warning');
         return;
     }
-    
+
     let slot = player.inventory.indexOf(null); // first open inventory slot
     if (slot < 0) {
         print(`You cannot carry any more. Your inventory is full.`, 'warning');
@@ -514,6 +531,30 @@ function playerMoveBy(dx, dy) {
     }
 }
 
+function playerGoDownStairs() {
+    if (!allEntitiesAt(player.location.x, player.location.y).some(e => e.stairs)) {
+        print(`There are no stairs here.`, 'warning');
+        return;
+    }
+
+    // Remove anything that's on the map
+    for (let entity of entities.values()) {
+        if (entity.id === player.id) { continue; } // player goes on
+        if (entity.location.x === undefined) { continue; } // inventory goes on
+        entities.delete(entity.id);
+    }
+
+    // Make a new map
+    tileMap = createTileMap(tileMap.dungeonLevel + 1);
+
+    // Heal the player
+    player.hp = ROT.Util.clamp(player.hp + Math.floor(player.max_hp / 2),
+                               0, player.max_hp);
+
+    print(`You take a moment to rest, and recover your strength.`, 'welcome');
+    draw();
+}
+
 //////////////////////////////////////////////////////////////////////
 // monster actions
 
@@ -528,7 +569,7 @@ function enemiesMove() {
                     // can't see the player, so the monster doesn't move
                     continue;
                 }
-                
+
                 let dx = player.location.x - entity.location.x,
                     dy = player.location.y - entity.location.y;
 
@@ -597,10 +638,10 @@ function createTargetingOverlay() {
         let [x, y] = display.eventToPosition(event);
         // TODO: feedback
     }
-    
+
     overlay.addEventListener('click', onClick);
     overlay.addEventListener('mousemove', onMouseMove);
-    
+
     return {
         get visible() { return visible; },
         open(instructions, callback_) {
@@ -638,7 +679,7 @@ function createInventoryOverlay(action) {
         }
         overlay.innerHTML = html;
     }
-    
+
     return {
         get visible() { return visible; },
         open() { visible = true; overlay.classList.add('visible'); draw(); },
@@ -667,6 +708,7 @@ function handlePlayerKeys(key) {
         k:           ['move', 0, -1],
         z:           ['move', 0, 0],
         g:           ['pickup'],
+        '>':         ['stairs-down'],
         u:           ['inventory-open-use'],
         d:           ['inventory-open-drop'],
         c:           ['save-game'],
@@ -702,6 +744,7 @@ function runAction(action) {
     }
 
     case 'pickup':               { playerPickupItem();           break; }
+    case 'stairs-down':          { playerGoDownStairs();         break; }
     case 'inventory-open-use':   { inventoryOverlayUse.open();   break; }
     case 'inventory-close-use':  { inventoryOverlayUse.close();  break; }
     case 'inventory-open-drop':  { inventoryOverlayDrop.open();  break; }
@@ -782,7 +825,7 @@ function setupInputHandlers(display) {
     canvas.addEventListener('mousemove', handleMousemove);
     canvas.addEventListener('mouseout', handleMouseout);
     canvas.addEventListener('blur', () => { instructions.textContent = "Click game for keyboard focus"; });
-    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move, g to get, b to load, c to save"; });
+    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move, g to get, b to load, c to save, > for stairs"; });
     canvas.focus();
 }
 
