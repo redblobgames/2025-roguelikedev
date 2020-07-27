@@ -1121,7 +1121,7 @@ The Python tutorial does a lot of other things to restructure the code but I did
 
 * Delving into the Dungeon
 
-Will having global variables everywhere come back to haunt me here too?
+The Python tutorial has a render order: actor > item > corpse > stairs. That means a corpse will block the stairs if you are in the room, but you can see the stairs once you step outside the field of view. I switched stairs and corpse.
 
 * Increasing Difficulty
 
@@ -1291,6 +1291,6 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
   <script src="roguelike-dev.js"></script>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 26 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 27 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export

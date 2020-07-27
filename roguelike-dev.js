@@ -75,16 +75,19 @@ const [setOverlayMessage, setTemporaryOverlayMessage] = (() => {
 //////////////////////////////////////////////////////////////////////
 // entities
 
-/** Entity properties that are shared among all the instances of the type */
+/** Entity properties that are shared among all the instances of the type.
+    visuals: [char, fg, optional bg, true if can be seen outside fov]
+ */
 const ENTITY_PROPERTIES = {
-    player: { blocks: true, render_order: 9, visuals: ['@', "hsl(60, 100%, 70%)"], },
-    troll:  { blocks: true, render_order: 6, visuals: ['T', "hsl(120, 60%, 30%)"], },
-    orc:    { blocks: true, render_order: 6, visuals: ['o', "hsl(100, 30%, 40%)"], },
+    player: { blocks: true, render_order: 5, visuals: ['@', "hsl(60, 100%, 70%)"], },
+    stairs: { stairs: true, render_order: 1, visuals: ['>', "hsl(200, 100%, 90%)", undefined, true], },
+    troll:  { blocks: true, render_order: 3, visuals: ['T', "hsl(120, 60%, 30%)"], },
+    orc:    { blocks: true, render_order: 3, visuals: ['o', "hsl(100, 30%, 40%)"], },
     corpse: { blocks: false, render_order: 0, visuals: ['%', "darkred"], },
-    'healing potion': { item: true, render_order: 1, visuals: ['!', "violet"], },
-    'lightning scroll': { item: true, render_order: 1, visuals: ['#', "hsl(60, 50%, 75%)"], },
-    'fireball scroll': { item: true, render_order: 1, visuals: ['#', "hsl(0, 50%, 50%)"], },
-    'confusion scroll': { item: true, render_order: 1, visuals: ['#', "hsl(0, 100%, 75%)"], },
+    'healing potion': { item: true, render_order: 2, visuals: ['!', "violet"], },
+    'lightning scroll': { item: true, render_order: 2, visuals: ['#', "hsl(60, 50%, 75%)"], },
+    'fireball scroll': { item: true, render_order: 2, visuals: ['#', "hsl(0, 50%, 50%)"], },
+    'confusion scroll': { item: true, render_order: 2, visuals: ['#', "hsl(0, 100%, 75%)"], },
 };
 /* always use the current value of 'type' to get the entity properties,
     so that we can change the object type later (e.g. to 'corpse') */
@@ -125,8 +128,6 @@ function allEntitiesAt(x, y) {
 /** return an item at (x,y) or null if there isn't one */
 function itemEntityAt(x, y) {
     let entities = allEntitiesAt(x, y).filter(e => e.item);
-    // TODO: allow only one item per map tile
-    // if (entities.length > 1) throw `invalid: more than one item entity at ${x},${y}`;
     return entities[0] || null;
 }
 
@@ -206,7 +207,7 @@ function createMap() {
     };
 }
 
-function createTileMap(width, height) {
+function createTileMap(dungeonLevel, width, height) {
     let tileMap = createMap();
     const digger = new ROT.Map.Digger(width, height);
     digger.create((x, y, contents) =>
@@ -216,15 +217,23 @@ function createTileMap(width, height) {
             explored: false,
         })
     );
+    tileMap.dungeonLevel = dungeonLevel;
     tileMap.rooms = digger.getRooms();
     tileMap.corridors = digger.getCorridors();
+
+    // Put stairs in the first room
+    let [stairX, stairY] = tileMap.rooms[0].getCenter();
+    createEntity('stairs', {x: stairX, y: stairY});
+    
+    // Put monster and items in all the rooms
+    for (let room of tileMap.rooms) {
+        populateRoom(room, 3, 2);
+    }
+    
     return tileMap;
 }
 const WIDTH = 60, HEIGHT = 25;
-let tileMap = createTileMap(WIDTH, HEIGHT);
-for (let room of tileMap.rooms) {
-    populateRoom(room, 3, 2);
-}
+let tileMap = createTileMap(1, WIDTH, HEIGHT);
 
 const fov = new ROT.FOV.PreciseShadowcasting((x, y) => tileMap.has(x, y) && tileMap.get(x, y).walkable);
 
@@ -241,8 +250,9 @@ function computeLightMap(center, tileMap) {
     return lightMap;
 }
 
+/** compute a per-tile map of entity visuals */
 function computeGlyphMap(entities) {
-    let glyphMap = createMap(); // [char, fg, optional bg]
+    let glyphMap = createMap();
     entities = Array.from(entities.values());
     entities.sort((a, b) => a.render_order - b.render_order);
     entities
@@ -274,7 +284,7 @@ function draw() {
                 bg = mapColors[lit][tile.wall];
             let glyph = glyphMap.get(x, y);
             if (glyph) {
-                ch = lit? glyph[0] : ch;
+                ch = lit || glyph[3] ? glyph[0] : ch;
                 fg = glyph[1];
                 bg = glyph[2] || bg;
             }
@@ -495,7 +505,7 @@ function playerMoveBy(dx, dy) {
         y = player.location.y + dy;
     if (tileMap.get(x, y).walkable) {
         let target = blockingEntityAt(x, y);
-        if (target) {
+        if (target && target.id !== player.id) {
             attack(player, target);
         } else {
             moveEntityTo(player, {x, y});
