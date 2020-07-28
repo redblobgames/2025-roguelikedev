@@ -1121,9 +1121,81 @@ The Python tutorial does a lot of other things to restructure the code but I did
 
 * Delving into the Dungeon
 
+Part 11 covers several things:
+
+1. Stairs and dungeon levels
+2. Experience points and player levels
+3. Character stats screen and upgrades
+
+** Stairs and dungeon levels
+
 The Python tutorial has a render order: actor > item > corpse > stairs. That means a corpse will block the stairs if you are in the room, but you can see the stairs once you step outside the field of view. I switched stairs and corpse.
 
-I had hard-coded the player's starting location but that doesn't work when generating new maps, so I checked the Python tutorial to see what they did. They start the player in the first generated room. That sounds like a good solution to me.
+Because of the way I draw things, if there's a monster on top of the stairs, the monster is to be drawn. But if the monster isn't in the field of view, that spot will be hidden. And that means the stairs will be hidden too. This is a bug but I'll have to redesign some of my drawing code to fix it. I added it to my list of things to do, but I'm not going to work on it right now. It seems like a rare situation. I like to accumulate several related bugs  before some code redesign so that I can tackle all those problems together. 
+
+Another possible issue is that there can be two items in one tile, and no way to access them separately.
+
+I had hard-coded the player's starting location but that doesn't work when generating new maps, so I checked the Python tutorial to see what they did. They start the player in the first generated room. That sounds like a good solution to me. I placed the player first because the monster generator will avoid placing another monster on top of a blocked tile.
+
+** Experience points and player levels
+
+This may be a little tricky, because I deviated from the Python tutorial a few weeks ago. They had /returned/ an object which described the message to print, whereas I had printed it directly. But now they're returning additional information like the experience points gained. Where will that fit into my code?
+
+I think if I keep going with this project I'd want to refactor this into an event system and not use the approach used by the tutorial. But for now I'm going to do the simplest thing that could possibly work. I'll only allow the player to gain xp.
+
+The tutorial uses a Level component with =level_up_base= set to 200 and =level_up_factor= set to 150. I don't see myself varying these per instance, so I'm going to express this instead as a function that calculates the xp needed to reach a specific level. The tutorial has =current_xp= reset every time you gain a level. I'm going to have it always go up.
+
+The formula is encoded in this code:
+
+#+begin_src python
+@property
+def experience_to_next_level(self):
+    return self.level_up_base + self.current_level * self.level_up_factor
+#+end_src
+
+Let's see what that looks like:
+
+| current_level | experience_to_next_level | total xp |
+|---------------+--------------------------+----------|
+|             1 |                      350 |      350 |
+|             2 |                      500 |      850 |
+|             3 |                      650 |     1500 |
+|             4 |                      800 |     2300 |
+|             5 |                      950 |     3250 |
+|             6 |                     1100 |     4350 |
+|             7 |                     1250 |     5600 |
+|             8 |                     1400 |     7000 |
+|             9 |                     1550 |     8550 |
+|            10 |                     1700 |    10250 |
+#+TBLFM: $1=@#-1
+#+TBLFM: $2=200+$1*150
+#+TBLFM: $3=vsum(@I$2..$2)
+
+Is there a compact formula for the total xp column? /Yes/: it simplifies to ~200 * N + 150 * (N * (N+1)) / 2~, where =N= is the current level. When we get past that amount, it's time to level up.
+
+#+begin_src js
+function xpForLevel(level) {
+    return 200 * level + 150 * (level * (level+1)) / 2;
+}
+#+end_src
+
+Now the player can level up with this code:
+
+#+begin_src js
+function gainXp(entity, amount) {
+    if (!entity.xp) { return; } // this entity doesn't gain experience
+    entity.xp += amount;
+    if (entity.id !== player.id) { throw `XP for non-player not implemented`; }
+    print(`You gain ${amount} experience points.`, 'info');
+    while (entity.xp > xpForLevel(entity.level)) {
+        entity.level += 1;
+        print(`Your battle skills grow stronger! You reached level ${entity.level}!`, 'warning');
+        // TODO: let player choose an upgrade
+    }
+}
+#+end_src
+
+** Character stats screen and upgrades
 
 * Increasing Difficulty
 
@@ -1136,6 +1208,10 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
 #+begin_export html
 <x:footer>
   <style>
+      table.standard { border: 0; }
+      table.standard th, table.standard td { font-family: var(--sans-serif); border-left-width: 0; border-right-width: 0; border-color: #ddd; }
+      table.standard th { border-top-width: 0; background: unset; }
+
       .figure img { 
           display: block; 
           margin: auto; 
@@ -1245,6 +1321,7 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
           text-indent: -1em;
       }
       #messages > div.welcome       { color: hsl(300,  50%,  70%); }
+      #messages > div.info               { color: hsl(2200,  10%,  80%); }
       #messages > div.player-attack { color: hsl( 30,  10%,  80%); }
       #messages > div.player-die    { color: hsl(  0, 100%,  50%); }
       #messages > div.enemy-attack  { color: hsl(  0,  50%,  80%); }

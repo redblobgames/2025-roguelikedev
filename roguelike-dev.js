@@ -81,20 +81,24 @@ const [setOverlayMessage, setTemporaryOverlayMessage] = (() => {
 const ENTITY_PROPERTIES = {
     player: { blocks: true, render_order: 5, visuals: ['@', "hsl(60, 100%, 70%)"], },
     stairs: { stairs: true, render_order: 1, visuals: ['>', "hsl(200, 100%, 90%)", undefined, true], },
-    troll:  { blocks: true, render_order: 3, visuals: ['T', "hsl(120, 60%, 30%)"], },
-    orc:    { blocks: true, render_order: 3, visuals: ['o', "hsl(100, 30%, 40%)"], },
+    troll:  { blocks: true, render_order: 3, visuals: ['T', "hsl(120, 60%, 30%)"], xp_award: 100, },
+    orc:    { blocks: true, render_order: 3, visuals: ['o', "hsl(100, 30%, 40%)"], xp_award: 35, },
     corpse: { blocks: false, render_order: 0, visuals: ['%', "darkred"], },
     'healing potion': { item: true, render_order: 2, visuals: ['!', "violet"], },
     'lightning scroll': { item: true, render_order: 2, visuals: ['#', "hsl(60, 50%, 75%)"], },
     'fireball scroll': { item: true, render_order: 2, visuals: ['#', "hsl(0, 50%, 50%)"], },
     'confusion scroll': { item: true, render_order: 2, visuals: ['#', "hsl(0, 100%, 75%)"], },
 };
-/* always use the current value of 'type' to get the entity properties,
-    so that we can change the object type later (e.g. to 'corpse'). JS lets
-    us forward these properties to a getter, and I use the getter to get
-    the corresponding value from ENTITY_PROPERTIES. */
+/* Always use the current value of 'type' to get the entity
+    properties, so that we can change the object type later (e.g. to
+    'corpse'). JS lets us forward these properties to a getter, and I
+    use the getter to get the corresponding value from
+    ENTITY_PROPERTIES. This loop looks weird but I kept having bugs
+    where I forgot to forward a property manually, so I wanted to
+    automate it. */
 const entity_prototype = {};
-for (let property of ['item', 'blocks', 'stairs', 'visuals', 'render_order']) {
+for (let property of
+     new Set(Object.values(ENTITY_PROPERTIES).flatMap(p => Object.keys(p))).values()) {
     Object.defineProperty(entity_prototype, property,
                           {get() { return ENTITY_PROPERTIES[this.type][property]; }});
 }
@@ -166,7 +170,12 @@ function createInventoryArray(capacity) {
 
 let player = createEntity(
     'player', NOWHERE,
-    {hp: 30, max_hp: 30, defense: 2, power: 5, inventory: createInventoryArray(26)}
+    {
+        hp: 30, max_hp: 30,
+        defense: 2, power: 5,
+        xp: 0, level: 1,
+        inventory: createInventoryArray(26),
+    }
 );
 
 function populateRoom(room, maxMonstersPerRoom, maxItemsPerRoom) {
@@ -401,14 +410,35 @@ function dropItem(entity, item) {
     enemiesMove();
 }
 
+//////////////////////////////////////////////////////////////////////
+// leveling
+
+function xpForLevel(level) {
+    return 200 * level + 150 * (level * (level+1)) / 2;
+}
+
+
+function gainXp(entity, amount) {
+    if (entity.xp === undefined) { return; } // this entity doesn't gain experience
+    entity.xp += amount;
+    if (entity.id !== player.id) { throw `XP for non-player not implemented`; }
+    print(`You gain ${amount} experience points.`, 'info');
+    while (entity.xp > xpForLevel(entity.level)) {
+        entity.level += 1;
+        print(`Your battle skills grow stronger! You reached level ${entity.level}!`, 'warning');
+        // TODO: let player choose an upgrade
+    }
+}
+
 
 //////////////////////////////////////////////////////////////////////
 // combat
 
-function takeDamage(target, amount) {
+function takeDamage(source, target, amount) {
     target.hp -= amount;
     if (target.hp <= 0) {
         print(`${target.name} dies!`, target.id === player.id? 'player-die' : 'enemy-die');
+        if (target.xp_award !== undefined) { gainXp(source, target.xp_award); }
         target.dead = true;
         target.type = 'corpse';
         target.name = `${target.name}'s corpse`;
@@ -421,7 +451,7 @@ function attack(attacker, defender) {
     let color = attacker.id === player.id? 'player-attack' : 'enemy-attack';
     if (damage > 0) {
         print(`${attacker.name} attacks ${defender.name} for ${damage} hit points.`, color);
-        takeDamage(defender, damage);
+        takeDamage(attacker, defender, damage);
     } else {
         print(`${attacker.name} attacks ${defender.name} but does no damage.`, color);
     }
@@ -448,7 +478,7 @@ function castFireball(caster, x, y) {
     print(`The fireball explodes, burning everything within ${maximum_range} tiles!`, 'player-attack');
     for (let target of attackables) {
         print(`The ${target.name} gets burned for ${damage} hit points.`, 'player-attack');
-        takeDamage(target, damage);
+        takeDamage(caster, target, damage);
     }
     return true;
 }
@@ -490,7 +520,7 @@ function castLighting(caster) {
         return false;
     }
     print(`A lighting bolt strikes the ${target.name} with a loud thunder! The damage is ${damage}`, 'player-attack');
-    takeDamage(target, damage);
+    takeDamage(caster, target, damage);
     return true;
 }
 
