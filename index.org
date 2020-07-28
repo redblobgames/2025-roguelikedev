@@ -1042,11 +1042,11 @@ Despite the few bugs I ran into, I think this went pretty well. Here's the code 
 function serializeGlobalState() {
     const saved = {
         entities: Array.from(entities),
-        tileMap: tileMap,
-        playerId: player.id,
         nextEntityId: createEntity.id,
+        playerId: player.id,
+        tileMap: tileMap,
         rngState: ROT.RNG.getState(),
-    }; // TODO: message log
+    };
     return JSON.stringify(saved);
 }
 #+end_src
@@ -1061,9 +1061,9 @@ function deserializeGlobalState(json) {
           [entry[0], Object.assign(Object.create(entity_prototype), entry[1])];
     const saved = JSON.parse(json);
     entities = new Map(saved.entities.map(reattachEntityPrototype));
-    createEntity.id = saved.nextEntityid;
-    Object.assign(tileMap, saved.tileMap);
+    createEntity.id = saved.nextEntityId;
     player = entities.get(saved.playerId);
+    Object.assign(tileMap, saved.tileMap);
     ROT.RNG.setState(saved.rngState);
 }
 #+end_src

@@ -339,7 +339,7 @@ function deserializeGlobalState(json) {
           [entry[0], Object.assign(Object.create(entity_prototype), entry[1])];
     const saved = JSON.parse(json);
     entities = new Map(saved.entities.map(reattachEntityPrototype));
-    createEntity.id = saved.nextEntityid;
+    createEntity.id = saved.nextEntityId;
     player = entities.get(saved.playerId);
     Object.assign(tileMap, saved.tileMap);
     updateTileMapFov(tileMap);
