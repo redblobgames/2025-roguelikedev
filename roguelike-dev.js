@@ -24,6 +24,12 @@ document.querySelector("figure").appendChild(display.getContainer());
 /** like python's randint */
 const randint = ROT.RNG.getUniformInt.bind(ROT.RNG);
 
+/** step function: given a sorted table [[x, y], …] 
+    and an input x1, return the y1 for the first x that is <x1 */
+function evaluateStepFunction(table, x) {
+    let candidates = table.filter(xy => x >= xy[0]);
+    return candidates.length > 0 ? candidates[candidates.length-1][1] : 0;
+}
 
 /** console messages */
 const MAX_MESSAGE_LINES = 100;
@@ -115,6 +121,9 @@ function createEntity(type, location, properties={}) {
     entity.name = type;
     Object.assign(entity, { id, type, location: NOWHERE, ...properties });
     moveEntityTo(entity, location);
+    if (entity.max_hp !== undefined && entity.hp === undefined) {
+        entity.hp = entity.max_hp;
+    }
     entities.set(id, entity);
     return entity;
 }
@@ -171,38 +180,49 @@ function createInventoryArray(capacity) {
 let player = createEntity(
     'player', NOWHERE,
     {
-        hp: 30, max_hp: 30,
-        defense: 2, power: 5,
+        max_hp: 100,
+        defense: 1, power: 4,
         xp: 0, level: 1,
         inventory: createInventoryArray(26),
     }
 );
 
-function populateRoom(room, maxMonstersPerRoom, maxItemsPerRoom) {
+function populateRoom(room, dungeonLevel) {
+    let maxMonstersPerRoom = evaluateStepFunction([[1, 2], [4, 3], [6, 5]], dungeonLevel),
+        maxItemsPerRoom = evaluateStepFunction([[1, 1], [4, 2]], dungeonLevel);
+
+    const ai = {behavior: 'move_to_player'};
+    const monsterChances = {
+        orc: 80,
+        troll: evaluateStepFunction([[3, 15], [5, 30], [7, 60]], dungeonLevel),
+    };
+    const monsterProps = {
+        orc:   {max_hp: 20, defense: 0, power: 4, ai},
+        troll: {max_hp: 30, defense: 2, power: 8, ai},
+    };
+    
     const numMonsters = randint(0, maxMonstersPerRoom);
     for (let i = 0; i < numMonsters; i++) {
         let x = randint(room.getLeft(), room.getRight()),
             y = randint(room.getTop(), room.getBottom());
         if (!blockingEntityAt(x, y)) {
-            let ai = {behavior: 'move_to_player'};
-            let [type, props] = randint(0, 3) === 0
-                ? ['troll', {hp: 16, max_hp: 16, defense: 1, power: 4, ai}]
-                : ['orc',   {hp: 10, max_hp: 10, defense: 0, power: 3, ai}];
-            createEntity(type, {x, y}, props);
+            let type = ROT.RNG.getWeightedValue(monsterChances);
+            createEntity(type, {x, y}, monsterProps[type]);
         }
     }
 
+    const itemChances = {
+        'healing potion': 70,
+        'lightning scroll': evaluateStepFunction([[4, 25]], dungeonLevel),
+        'fireball scroll': evaluateStepFunction([[6, 25]], dungeonLevel),
+        'confusion scroll': evaluateStepFunction([[2, 10]], dungeonLevel),
+    };
     const numItems = randint(0, maxItemsPerRoom);
     for (let i = 0; i < numItems; i++) {
         let x = randint(room.getLeft(), room.getRight()),
             y = randint(room.getTop(), room.getBottom());
         if (allEntitiesAt(x, y).length === 0) {
-            let item_chance = randint(0, 99);
-            createEntity(
-                item_chance < 75? 'healing potion'
-                    : item_chance < 80? 'fireball scroll'
-                    : item_chance < 90? 'confusion scroll'
-                    : 'lightning scroll', {x, y});
+            createEntity(ROT.RNG.getWeightedValue(itemChances), {x, y});
         }
     }
 }
@@ -252,7 +272,7 @@ function createTileMap(dungeonLevel) {
 
     // Put monster and items in all the rooms
     for (let room of tileMap.rooms) {
-        populateRoom(room, 3, 2);
+        populateRoom(room, dungeonLevel);
     }
 
     updateTileMapFov(tileMap);
@@ -354,11 +374,12 @@ function deserializeGlobalState(json) {
 function useItem(entity, item) {
     switch (item.type) {
     case 'healing potion': {
+        const healing = 40;
         if (entity.hp === entity.max_hp) {
             print(`You are already at full health`, 'warning');
         } else {
             print(`Your wounds start to feel better!`, 'healing');
-            entity.hp = ROT.Util.clamp(entity.hp + 4, 0, entity.max_hp);
+            entity.hp = ROT.Util.clamp(entity.hp + healing, 0, entity.max_hp);
             moveEntityTo(item, NOWHERE);
             enemiesMove();
         }
@@ -460,7 +481,7 @@ function attack(attacker, defender) {
 /** return true if the item was used */
 function castFireball(caster, x, y) {
     const maximum_range = 3;
-    const damage = 12;
+    const damage = 25;
     let visibleToCaster = computeLightMap(caster.location, tileMap);
     if (!(visibleToCaster.get(x, y) > 0)) {
         print(`You cannot target a tile outside your field of view.`, 'warning');
@@ -505,7 +526,7 @@ function castConfusion(caster, x, y) {
 /** return true if the item was used */
 function castLighting(caster) {
     const maximum_range = 5;
-    const damage = 20;
+    const damage = 40;
     let visibleToCaster = computeLightMap(caster.location, tileMap);
     let attackables = Array.from(entities.values())
         .filter(e => e.id !== caster.id)
