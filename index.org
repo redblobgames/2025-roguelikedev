@@ -14,6 +14,7 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
   <div id="inventory-drop" class="overlay"/>
   <div id="upgrade" class="overlay"/>
   <div id="targeting" class="overlay"/>
+  <div id="character" class="overlay"/>
   <div id="messages"/>
   <div id="message-overlay"/>
   <div id="instructions"/>
@@ -1219,7 +1220,14 @@ After leveling up the Python tutorial immediately brings up a menu where you can
 
 There's a logic bug in my code: if I leveled up twice in one combat action, I only get to pick an upgrade once. Killing a monster won't trigger this bug, but using fireball can kill several trolls at once, and that would be enough to trigger this bug. It seems like it won't happen often, so I've added this to the list of things to look at later. One way to handle this would be to have another field on the player to indicate how many upgrades I have remaining.
 
+[[./screenshots/19.png]]
+
 ** Character stats screen
+
+The character screen shows level, xp, xp to next level, max hp, attack, defense. In the Python tutorial it's formatted inside the game screen, but I'm going to use the browser's layout system to put it in an overlay, like I have done with inventory and upgrades.
+
+[[./screenshots/20.png]]
+
 
 * Increasing Difficulty
 
@@ -1276,6 +1284,7 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
       .overlay.visible {
           z-index: 2;
           pointer-events: none;
+          box-shadow: 0 1px 4px -3px white;
           opacity: 1;
       }
       .overlay ul {
@@ -1288,7 +1297,7 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
       }
       .overlay kbd {
           display: inline-block;
-          border: 1px solid hsl(150, 60%, 30%);
+          border: 1px solid hsla(0, 0%, 0%, 0.5);
           padding: 2px 4px;
           font-weight: normal;
       }
@@ -1326,6 +1335,11 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
           text-align: center;
           height: 100%;
       }
+
+      #character {
+          background: hsla(330, 10%, 20%, 0.5);
+          color: white;
+       }
 
       #instructions {
           height: 1.2em;

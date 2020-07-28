@@ -687,6 +687,34 @@ function createTargetingOverlay() {
     };
 }
 
+function createCharacterOverlay() {
+    const overlay = document.querySelector(`#character`);
+    let visible = false;
+
+    return {
+        get visible() { return visible; },
+        open() {
+            const experienceToLevel = xpForLevel(player.level) - player.xp;
+            visible = true;
+            overlay.innerHTML = `<div>Character information</div>
+             <ul>
+               <li>Level: ${player.level}</li>
+               <li>Experience: ${player.xp}</li>
+               <li>Experience to Level: ${experienceToLevel}</li>
+               <li>Maximum HP: ${player.max_hp}</li>
+               <li>Attack: ${player.power}</li>
+               <li>Defense: ${player.defense}</li>
+             </ul>
+             <div><kbd>ESC</kbd> to exit</div>`;
+            overlay.classList.add('visible');
+        },
+        close() {
+            visible = false;
+            overlay.classList.remove('visible');
+        },
+    };
+}
+
 function createUpgradeOverlay() {
     const overlay = document.querySelector(`#upgrade`);
     let visible = false;
@@ -746,6 +774,7 @@ function handlePlayerDeadKeys(key) {
     const actions = {
         o:  ['toggle-debug'],
         r:  ['restore-game'],
+        c:  ['character-open'],
     };
     return actions[key];
 }
@@ -794,8 +823,12 @@ function handleInventoryKeys(action) {
     };
 }
 
+function handleCharacterKeys(key) {
+    return (key === 'Escape' || key == 'c') && ['character-close'];
+}
+    
 function handleTargetingKeys(key) {
-    return key === 'Escape'? ['targeting-cancel'] : undefined;
+    return key === 'Escape' && ['targeting-cancel'];
 }
 
 function runAction(action) {
@@ -812,6 +845,8 @@ function runAction(action) {
     case 'inventory-close-use':  { inventoryOverlayUse.close();  break; }
     case 'inventory-open-drop':  { inventoryOverlayDrop.open();  break; }
     case 'inventory-close-drop': { inventoryOverlayDrop.close(); break; }
+    case 'character-open':       { characterOverlay.open();      break; }
+    case 'character-close':      { characterOverlay.close();     break; }
     case 'targeting-cancel':     { targetingOverlay.close();     break; }
 
     case 'upgrade': {
@@ -880,6 +915,7 @@ function handleKeyDown(event) {
         : upgradeOverlay.visible? handleUpgradeKeys
         : inventoryOverlayUse.visible? handleInventoryKeys('use')
         : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
+        : characterOverlay.visible? handleCharacterKeys
         : player.dead? handlePlayerDeadKeys
         : handlePlayerKeys;
     let action = handleKeys(event.key);
@@ -919,4 +955,5 @@ const inventoryOverlayUse = createInventoryOverlay('use');
 const inventoryOverlayDrop = createInventoryOverlay('drop');
 const targetingOverlay = createTargetingOverlay();
 const upgradeOverlay = createUpgradeOverlay();
+const characterOverlay = createCharacterOverlay();
 setupInputHandlers(display);
