@@ -113,7 +113,7 @@ function createEntity(type, location, properties={}) {
     let id = ++createEntity.id;
     let entity = Object.create(entity_prototype);
     entity.name = type;
-    Object.assign(entity, { id, type, location: {x: NaN, y: NaN}, ...properties });
+    Object.assign(entity, { id, type, location: NOWHERE, ...properties });
     moveEntityTo(entity, location);
     entities.set(id, entity);
     return entity;
@@ -426,7 +426,7 @@ function gainXp(entity, amount) {
     while (entity.xp > xpForLevel(entity.level)) {
         entity.level += 1;
         print(`Your battle skills grow stronger! You reached level ${entity.level}!`, 'warning');
-        // TODO: let player choose an upgrade
+        upgradeOverlay.open();
     }
 }
 
@@ -687,6 +687,30 @@ function createTargetingOverlay() {
     };
 }
 
+function createUpgradeOverlay() {
+    const overlay = document.querySelector(`#upgrade`);
+    let visible = false;
+    let callback = () => { throw `set callback`; };
+
+    return {
+        get visible() { return visible; },
+        open() {
+            visible = true;
+            overlay.innerHTML = `<div>Level up! Choose a stat to raise:</div>
+             <ul>
+               <li><kbd>A</kbd> Constitution (+20 HP, from ${player.max_hp})</li>
+               <li><kbd>B</kbd> Strength (+1 attack, from ${player.power})</li>
+               <li><kbd>C</kbd> Agility (+1 defense, from ${player.defense})</li>
+             </ul>`;
+            overlay.classList.add('visible');
+        },
+        close() {
+            visible = false;
+            overlay.classList.remove('visible');
+        },
+    };
+}
+
 function createInventoryOverlay(action) {
     const overlay = document.querySelector(`#inventory-${action}`);
     let visible = false;
@@ -747,6 +771,15 @@ function handlePlayerKeys(key) {
     return action || handlePlayerDeadKeys(key);
 }
 
+function handleUpgradeKeys(key) {
+    const actions = {
+        a:  ['upgrade', 'hp'],
+        b:  ['upgrade', 'str'],
+        c:  ['upgrade', 'def'],
+    };
+    return actions[key];
+}
+
 function handleInventoryKeys(action) {
     return key => {
         if (key === 'Escape') { return [`inventory-close-${action}`]; }
@@ -781,18 +814,37 @@ function runAction(action) {
     case 'inventory-close-drop': { inventoryOverlayDrop.close(); break; }
     case 'targeting-cancel':     { targetingOverlay.close();     break; }
 
+    case 'upgrade': {
+        let [_, stat] = action;
+        switch (stat) {
+        case 'hp':
+            player.max_hp += 20;
+            player.hp += 20;
+            break;
+        case 'str':
+            player.power += 1;
+            break;
+        case 'def':
+            player.defense += 1;
+            break;
+        default:
+            throw `invalid upgrade ${stat}`;
+        }
+        upgradeOverlay.close();
+        break;
+    }
     case 'inventory-do-use': {
         let [_, id] = action;
         inventoryOverlayUse.close();
         useItem(player, entities.get(id));
         break;
-    };
+    }
     case 'inventory-do-drop': {
         let [_, id] = action;
         inventoryOverlayDrop.close();
         dropItem(player, entities.get(id));
         break;
-    };
+    }
     case 'load-game': {
         let json = window.localStorage.getItem(STORAGE_KEY);
         if (json === null) {
@@ -824,6 +876,7 @@ function runAction(action) {
 function handleKeyDown(event) {
     let handleKeys =
         targetingOverlay.visible? handleTargetingKeys
+        : upgradeOverlay.visible? handleUpgradeKeys
         : inventoryOverlayUse.visible? handleInventoryKeys('use')
         : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
         : player.dead? handlePlayerDeadKeys
@@ -855,7 +908,7 @@ function setupInputHandlers(display) {
     canvas.addEventListener('mousemove', handleMousemove);
     canvas.addEventListener('mouseout', handleMouseout);
     canvas.addEventListener('blur', () => { instructions.textContent = "Click game for keyboard focus"; });
-    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move, g to get, b to load, c to save, > for stairs"; });
+    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move, [G]et, [U]se, [D]rop, B to load, C to save, > for stairs"; });
     canvas.focus();
 }
 
@@ -864,4 +917,5 @@ draw();
 const inventoryOverlayUse = createInventoryOverlay('use');
 const inventoryOverlayDrop = createInventoryOverlay('drop');
 const targetingOverlay = createTargetingOverlay();
+const upgradeOverlay = createUpgradeOverlay();
 setupInputHandlers(display);

@@ -12,6 +12,7 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
   <div id="health-text"/>
   <div id="inventory-use" class="overlay"/>
   <div id="inventory-drop" class="overlay"/>
+  <div id="upgrade" class="overlay"/>
   <div id="targeting" class="overlay"/>
   <div id="messages"/>
   <div id="message-overlay"/>
@@ -19,7 +20,9 @@ I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]
 </figure>
 #+end_export
 
-Source code: [[href:roguelike-dev.js][roguelike-dev.js]]
+Source code: [[href:roguelike-dev.js][roguelike-dev.js]] (all one file, no build step)
+
+My goal is /not/ to implement my own features, but instead focus on only the features from the Python + tcod tutorial, implementing them in JavaScript + browser + rot.js instead. I'm willing to implement the data structures, code style, etc., differently from the tutorial to better fit JavaScript and my own coding style. However, every time I think of a /game feature/ I'd like to add or do differently, I add it to a text file somewhere, and then I can come back to it /after/ I finish the tutorial. 
 
 * Drawing the ‘@’ symbol and moving it around
 
@@ -196,6 +199,8 @@ What else is in Part 1 of the tutorial?
 - press escape to quit
 
 I'm going to skip these two.
+
+Note: I later changed the code from using =keyCode= to using =key=. This is a newer browser feature, and it provides a string name of the key that was pressed, handling shifted keys too. For example, =keyCode= doesn't distinguish between ~/~ and ~?~ because they are on the same key, but =key= will be different.
 
 * The generic Entity, the render functions, and the map
 
@@ -976,6 +981,8 @@ The inventory UI gets used for two actions: /use/ and /drop/. When invoking the 
 
 I decided the way to remember the action is to make two separate inventory overlays. I can apply different styling to them, but have them share common code.
 
+As with the message area, I needed to use CSS =pointer-events: none= on these inventory screens so that clicking on them will give the underlying =<canvas>= focus.
+
 /I've been sharing less code as I go along, in part because the refactorings made it harder to show the changes, but also, because I'm spending more time on the code and less on this explanation of it./
 
 * Ranged scrolls and targeting
@@ -990,7 +997,7 @@ This complicates the game state some more, because we need to remember /which/ i
 
 [[./screenshots/18.png]]
 
-There's a little glitch with this idea: when /clicking/ on the targeting overlay, the game loses focus! For now my workaround is to re-focus the game canvas after receiving a click on the targeting overlay, but I think this isn't a great solution.
+There's a little glitch with this idea: because I had been using =pointer-events: none=, mouse events don't go to the targeting overlay. Easy fix: set =pointer-events: auto=. But now when /clicking/ on the targeting overlay, the game loses focus! For now my workaround is to re-focus the game canvas after receiving a click on the targeting overlay, but I think this isn't a great solution.
 
 * Saving and loading
 
@@ -1123,11 +1130,14 @@ The Python tutorial does a lot of other things to restructure the code but I did
 
 Part 11 covers several things:
 
-1. Stairs and dungeon levels
-2. Experience points and player levels
-3. Character stats screen and upgrades
+1. Stairs
+2. Dungeon levels
+3. Experience points
+4. Player levels
+5. Upgrade menu when leveling up
+6. Character stats screen
 
-** Stairs and dungeon levels
+** Stairs
 
 The Python tutorial has a render order: actor > item > corpse > stairs. That means a corpse will block the stairs if you are in the room, but you can see the stairs once you step outside the field of view. I switched stairs and corpse.
 
@@ -1135,13 +1145,21 @@ Because of the way I draw things, if there's a monster on top of the stairs, the
 
 Another possible issue is that there can be two items in one tile, and no way to access them separately.
 
-I had hard-coded the player's starting location but that doesn't work when generating new maps, so I checked the Python tutorial to see what they did. They start the player in the first generated room. That sounds like a good solution to me. I placed the player first because the monster generator will avoid placing another monster on top of a blocked tile.
+** Dungeon levels
 
-** Experience points and player levels
+I had hard-coded the player's starting location to work with the initial map for one particular seed. That doesn't work when generating new maps, so I checked the Python tutorial to see what they did. They start the player in the first generated room. That sounds like a good solution to me. I placed the player first because the monster generator will avoid placing another monster on top of a blocked tile.
+
+The Python tutorial discards all entities other than the player when changing dungeon levels. I'm representing my entities a little differently. The global =entities= set also contains entities that are in a creature's inventory. A =location= can either be ={x: y:}= for something on the map, or ={carried: slot:}= for something carried by someone. When changing dungeon levels I discarded all entities with ={x: y:}= except the player.
+
+A different design would be to change entities to ={x: y: z:}=. Then I wouldn't discard any entities when changing levels. This would allow going back to a previous level. To avoid scope creep I'm limiting features to what's in the Python tutorial, so I added this to my "future ideas" list.
+
+** Experience points
 
 This may be a little tricky, because I deviated from the Python tutorial a few weeks ago. They had /returned/ an object which described the message to print, whereas I had printed it directly. But now they're returning additional information like the experience points gained. Where will that fit into my code?
 
 I think if I keep going with this project I'd want to refactor this into an event system and not use the approach used by the tutorial. But for now I'm going to do the simplest thing that could possibly work. I'll only allow the player to gain xp.
+
+** Player levels
 
 The tutorial uses a Level component with =level_up_base= set to 200 and =level_up_factor= set to 150. I don't see myself varying these per instance, so I'm going to express this instead as a function that calculates the xp needed to reach a specific level. The tutorial has =current_xp= reset every time you gain a level. I'm going to have it always go up.
 
@@ -1195,7 +1213,13 @@ function gainXp(entity, amount) {
 }
 #+end_src
 
-** Character stats screen and upgrades
+** Level upgrade
+
+After leveling up the Python tutorial immediately brings up a menu where you can choose an upgrade: constitution, strength, or agility. I'm going to implement this menu with an overlay, just as I did with inventory. This might be a good time to generalize the inventory menu code to work as any menu, like the Python tutorial has already done, but it wasn't immediately obvious how I should do that so I'm writing a new function to handle level upgrades, and will then figure out a general pattern later.
+
+There's a logic bug in my code: if I leveled up twice in one combat action, I only get to pick an upgrade once. Killing a monster won't trigger this bug, but using fireball can kill several trolls at once, and that would be enough to trigger this bug. It seems like it won't happen often, so I've added this to the list of things to look at later. One way to handle this would be to have another field on the player to indicate how many upgrades I have remaining.
+
+** Character stats screen
 
 * Increasing Difficulty
 
@@ -1251,6 +1275,7 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
       }
       .overlay.visible {
           z-index: 2;
+          pointer-events: none;
           opacity: 1;
       }
       .overlay ul {
@@ -1266,6 +1291,17 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
           border: 1px solid hsl(150, 60%, 30%);
           padding: 2px 4px;
           font-weight: normal;
+      }
+      #upgrade {
+          background: hsl(180, 20%, 20%);
+          color: white;
+      }
+      #upgrade ul {
+          column-count: 1;
+      }
+      #upgrade kbd {
+          background: hsl(180, 50%, 30%);
+          color: cyan;
       }
       #inventory-use {
           background: hsl(200, 10%, 20%);
@@ -1285,6 +1321,7 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
       }
       #targeting {
           background: hsla(60, 10%, 100%, 0.1);
+          pointer-events: auto;
           color: white;
           text-align: center;
           height: 100%;
@@ -1370,6 +1407,6 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
   <script src="roguelike-dev.js"></script>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 27 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 28 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export
