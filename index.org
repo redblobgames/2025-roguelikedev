@@ -1082,7 +1082,7 @@ Now I can save to a string and restore from a string. The Python tutorial saves 
 1. I could save to =localStorage= every turn, and load from it when opening the page. There'd also be a key to start a new game.
 1. I could have a key to save and a key to load, and I could rely on reloading the page to start a new game.
 
-I decided on 2. I used the Python tutorial's keys: ~b~ to load, ~c~ to save.
+I decided on 2. The Python tutorial uses ~A~ for new game, ~B~ to load, ~C~ to save. But this is because they have a game menu at the beginning. I don't have a game menu so I'll use ~S~ to save, ~R~ to restore.
 
 It all works nicely! /Except…/
 

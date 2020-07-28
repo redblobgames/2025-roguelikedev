@@ -745,7 +745,7 @@ function createInventoryOverlay(action) {
 function handlePlayerDeadKeys(key) {
     const actions = {
         o:  ['toggle-debug'],
-        b:  ['load-game'],
+        r:  ['restore-game'],
     };
     return actions[key];
 }
@@ -765,7 +765,7 @@ function handlePlayerKeys(key) {
         '>':         ['stairs-down'],
         u:           ['inventory-open-use'],
         d:           ['inventory-open-drop'],
-        c:           ['save-game'],
+        s:           ['save-game'],
     };
     let action = actions[key];
     return action || handlePlayerDeadKeys(key);
@@ -845,12 +845,12 @@ function runAction(action) {
         dropItem(player, entities.get(id));
         break;
     }
-    case 'load-game': {
+    case 'restore-game': {
         let json = window.localStorage.getItem(STORAGE_KEY);
         if (json === null) {
             setTemporaryOverlayMessage("There is no saved game.");
         } else {
-            setTemporaryOverlayMessage("Loaded game.");
+            setTemporaryOverlayMessage("Restored saved game.");
             deserializeGlobalState(json);
             drawMessages();
             draw();
@@ -874,6 +874,7 @@ function runAction(action) {
 }
 
 function handleKeyDown(event) {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
     let handleKeys =
         targetingOverlay.visible? handleTargetingKeys
         : upgradeOverlay.visible? handleUpgradeKeys
@@ -908,7 +909,7 @@ function setupInputHandlers(display) {
     canvas.addEventListener('mousemove', handleMousemove);
     canvas.addEventListener('mouseout', handleMouseout);
     canvas.addEventListener('blur', () => { instructions.textContent = "Click game for keyboard focus"; });
-    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move, [G]et, [U]se, [D]rop, B to load, C to save, > for stairs"; });
+    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move, [G]et, [U]se, [D]rop, [S]ave game, [R]estore game, > for stairs"; });
     canvas.focus();
 }
 
