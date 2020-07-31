@@ -1268,7 +1268,50 @@ This section of the tutorial was pretty short.
 
 * Gearing up
 
-Ok, this is back to some interesting stuff. How do I want to support "equipment" separate from "inventory"? How about /locations/ that are equipment slots instead of inventory slots?
+Ok, this is back to some interesting stuff. How do I want to support "equipment" separate from "inventory"? I'm going to use a slightly different model from what the Python tutorial uses.
+
+** Equipment
+
+Their model: equipment is a subset of inventory. An item is in your inventory and can be equipped or unequipped. If you drop an item from inventory, you also unequip it. If you already had an item equipped when you equip a new one, you unequip the old one.
+
+My model: equipment is another location, like inventory. An item is in your inventory /or/ in your equipment. If you drop an item from inventory, it is not unequipped because inventory items are not equipped.
+
+But now I need a way to unequip things /into/ your inventory. And what if the inventory is full? 
+
+Partway down the Python tutorial has the player have some initial equipment. I'm going to take this further and say that the player has /all/ equipment slots filled. Always. When you equip a new item from your inventory, it /swaps position/ with the item that you already had equipped there. This solves the problem with unequipping into a full inventory, because you can only unequip by equipping something else.
+
+I initially extended my =moveEntityTo= function to work with equipment but then decided to write a separate one =swapEquipment= which will perform the swap more simply than two moves, and ensure that the equipment slot is always full.
+
+** Initial equipment
+
+Equipment has to have properties =item: true, equipment_slot: X=. When equipped it will have =location: {equipped_by: entity, slot: X}=. Those =X='s have to be the same (equipment can only be put into a valid slot).
+
+Before I had =moveEntityTo= to handle all the invariants, but now I don't have that for equipment, so I need to /carefully/ construct the initial equipment for the player:
+
+1. construct equipment as an entity =dagger=.
+1. =player.equipment[main_hand_slot]= should contain =dagger.id=
+1. =dagger.location= should be ={equipped_by: player.id, slot: main_hand_slot}=
+
+** Bonuses
+
+I ended up with these fields, where =F= is =max_hp=, =power=, or =defense=:
+
+- =bonus_F= on the item
+- =base_F= on an actor
+- =increased_F= on an actor is a computed property summing the bonuses from equipmet
+- =effective_F= on an actor is a computed property summing the base and increased values
+
+The character screen shows the base and increased values:
+
+[[./screenshots/20.png]]
+
+* Conclusion
+
+This was a fun project. I had tried previously with Rust, but learning Rust /and/ learning to write a roguelike game was tackling two things when I should've tackled only one at a time. This time went better.
+
+My code is nowhere near as nicely structured as the Python code, but this is often my style. I tend to write big files with lots of functionality. In this case everything fit into one file of around 1050 lines. The Python tutorial v1 is around 1800 lines but it's better structured.
+
+I don't think I'll use any of this code in a future project, but the code itself is not the valuable part of following this tutorial. I learned the design patterns and the pieces that went into this type of game.
 
 #+begin_export html
 <x:footer>
@@ -1454,6 +1497,6 @@ Ok, this is back to some interesting stuff. How do I want to support "equipment"
   <script src="roguelike-dev.js"></script>
 
   Created 18 Jun 2020; &#160;
-  <!-- hhmts start -->Last modified: 28 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 30 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export

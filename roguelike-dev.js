@@ -20,6 +20,8 @@ const display = new ROT.Display({width: 60, height: 25, fontSize: 16, fontFamily
 display.getContainer().setAttribute('id', "game");
 document.querySelector("figure").appendChild(display.getContainer());
 
+const EQUIP_MAIN_HAND = 0;
+const EQUIP_OFF_HAND = 1;
 
 /** like python's randint */
 const randint = ROT.RNG.getUniformInt.bind(ROT.RNG);
@@ -83,6 +85,8 @@ const [setOverlayMessage, setTemporaryOverlayMessage] = (() => {
 
 /** Entity properties that are shared among all the instances of the type.
     visuals: [char, fg, optional bg, true if can be seen outside fov]
+    item: true if can go into inventory
+    equipment_slot: 0–25 if it can go into equipment, undefined otherwise
  */
 const ENTITY_PROPERTIES = {
     player: { blocks: true, render_order: 5, visuals: ['@', "hsl(60, 100%, 70%)"], },
@@ -94,6 +98,10 @@ const ENTITY_PROPERTIES = {
     'lightning scroll': { item: true, render_order: 2, visuals: ['#', "hsl(60, 50%, 75%)"], },
     'fireball scroll': { item: true, render_order: 2, visuals: ['#', "hsl(0, 50%, 50%)"], },
     'confusion scroll': { item: true, render_order: 2, visuals: ['#', "hsl(0, 100%, 75%)"], },
+    dagger: { item: true, equipment_slot: EQUIP_MAIN_HAND, render_order: 2, bonus_power: 0, visuals: ['-', "hsl(200, 30%, 90%)"], },
+    sword: { item: true, equipment_slot: EQUIP_MAIN_HAND, render_order: 2, bonus_power: 3, visuals: ['/', "hsl(200, 30%, 90%)"], },
+    towel: { item: true, equipment_slot: EQUIP_OFF_HAND, render_order: 2, bonus_defense: 0, visuals: ['~', "hsl(40, 50%, 80%)"], },
+    shield: { item: true, equipment_slot: EQUIP_OFF_HAND, render_order: 2, bonus_defense: 1, visuals: ['[', "hsl(40, 50%, 80%)"], },
 };
 /* Always use the current value of 'type' to get the entity
     properties, so that we can change the object type later (e.g. to
@@ -102,7 +110,20 @@ const ENTITY_PROPERTIES = {
     ENTITY_PROPERTIES. This loop looks weird but I kept having bugs
     where I forgot to forward a property manually, so I wanted to
     automate it. */
-const entity_prototype = {};
+function calculateEquipmentBonus(equipment, field) {
+    if (!equipment) return 0;
+    return equipment
+        .filter(id => id !== null)
+        .reduce((sum, id) => sum + (entities.get(id)[field] || 0), 0);
+}
+const entity_prototype = {
+    get increased_max_hp() { return calculateEquipmentBonus(this.equipment, 'bonus_max_hp'); },
+    get increased_power() { return calculateEquipmentBonus(this.equipment, 'bonus_power'); },
+    get increased_defense() { return calculateEquipmentBonus(this.equipment, 'bonus_defense'); },
+    get effective_max_hp() { return this.base_max_hp + this.increased_max_hp; },
+    get effective_power() { return this.base_power + this.increased_power; },
+    get effective_defense() { return this.base_defense + this.increased_defense; },
+};
 for (let property of
      new Set(Object.values(ENTITY_PROPERTIES).flatMap(p => Object.keys(p))).values()) {
     Object.defineProperty(entity_prototype, property,
@@ -110,8 +131,11 @@ for (let property of
 }
 
 /* Schema:
- * location: {x:int, y:int} | {carried:id, slot:int} -- latter allowed only if .item === true
- * inventory: Array<null|int> - should only contain entities with .item === true
+ * location: {x:int, y:int}
+ *          | {carried_by:id, slot:int} -- allowed only if .item
+ *          | {equipped_by:id, slot:int} -- allowed only if .equipment === slot
+ * inventory: Array<null|int> - should only contain entities with .item
+ * equipment: Array<null|int> - should contain only items with .equipment
  */
 const NOWHERE = {x: -1, y: -1}; // TODO: figure out a better location
 let entities = new Map();
@@ -121,8 +145,8 @@ function createEntity(type, location, properties={}) {
     entity.name = type;
     Object.assign(entity, { id, type, location: NOWHERE, ...properties });
     moveEntityTo(entity, location);
-    if (entity.max_hp !== undefined && entity.hp === undefined) {
-        entity.hp = entity.max_hp;
+    if (entity.base_max_hp !== undefined && entity.hp === undefined) {
+        entity.hp = entity.base_max_hp;
     }
     entities.set(id, entity);
     return entity;
@@ -152,24 +176,50 @@ function blockingEntityAt(x, y) {
     return entities[0] || null;
 }
 
-/** move an entity to a new location, either {x:int y:int} or {carried:id slot:int} */
+/** swap an inventory item with an equipment slot */
+function swapEquipment(entity, inventory_slot, equipment_slot) {
+    let heldId = entity.inventory[inventory_slot],
+        equippedId = entity.equipment[equipment_slot];
+    if (heldId === null) throw `invalid: swap equipment must be with non-empty inventory slot`;
+    if (equippedId === null) throw `invalid: swap equipment must be with non-empty equipment slot`;
+    
+    let held = entities.get(heldId);
+    let equipped = entities.get(equippedId);
+    if (held.location.carried_by !== entity.id) throw `invalid: inventory item not held by entity`;
+    if (held.location.slot !== inventory_slot) throw `invalid: inventory item not held in correct slot`;
+    if (equipped.location.equipped_by !== entity.id) throw `invalid: item not equipped by entity`;
+    if (equipped.location.slot !== equipment_slot) throw `invalid: item not equipped in correct slot`;
+    
+    let held_equipment_slot = held.equipment_slot;
+    if (held_equipment_slot === undefined) throw `invalid: swap equipment must be with something equippable`;
+    if (held_equipment_slot !== equipment_slot) throw `invalid: swap equipment must be to the correct slot`;
+    
+    entity.inventory[inventory_slot] = equippedId;
+    entity.equipment[equipment_slot] = heldId;
+    held.location = {equipped_by: entity.id, slot: equipment_slot};
+    equipped.location = {carried_by: entity.id, slot: inventory_slot};
+}
+
+/** move an entity to a new location:
+ *   {x:int y:int} on the map
+ *   {carried_by_by:id slot:int} in id's 'inventory' 
+ *   {equipped_by:id slot:int} is a valid location but NOT allowed here
+ */
 function moveEntityTo(entity, location) {
-    if (entity.location.carried !== undefined) {
-        let {carried, slot} = entity.location;
-        let carrier = entities.get(carried);
+    if (entity.location.carried_by !== undefined) {
+        let {carried_by, slot} = entity.location;
+        let carrier = entities.get(carried_by);
         if (carrier.inventory[slot] !== entity.id) throw `invalid: inventory slot ${slot} contains ${carrier.inventory[slot]} but should contain ${entity.id}`;
         carrier.inventory[slot] = null;
     }
     entity.location = location;
-    if (entity.location.carried !== undefined) {
-        let {carried, slot} = entity.location;
-        let carrier = entities.get(carried);
+    if (entity.location.carried_by !== undefined) {
+        let {carried_by, slot} = entity.location;
+        let carrier = entities.get(carried_by);
         if (carrier.inventory === undefined) throw `invalid: moving to an entity without inventory`;
         if (carrier.inventory[slot] !== null) throw `invalid: inventory already contains an item ${carrier.inventory[slot]} in slot ${slot}`;
         carrier.inventory[slot] = entity.id;
     }
-    // TODO: add constraints for at most one (player|monster)
-    // and at most one (item) in any {x, y}
 }
 
 /** inventory is represented as an array with (null | entity.id) */
@@ -177,15 +227,27 @@ function createInventoryArray(capacity) {
     return Array.from({length: capacity}, () => null);
 }
 
-let player = createEntity(
-    'player', NOWHERE,
-    {
-        max_hp: 100,
-        defense: 1, power: 4,
-        xp: 0, level: 1,
-        inventory: createInventoryArray(26),
+let player = (function() {
+    let player = createEntity(
+        'player', NOWHERE,
+        {
+            base_max_hp: 100,
+            base_defense: 1, base_power: 4,
+            xp: 0, level: 1,
+            inventory: createInventoryArray(26),
+            equipment: createInventoryArray(26),
+        }
+    );
+
+    // Insert the initial equipment with the correct invariants
+    function equip(slot, type) {
+        let entity = createEntity(type, {equipped_by: player.id, slot: slot});
+        player.equipment[slot] = entity.id;
     }
-);
+    equip(EQUIP_MAIN_HAND, 'dagger');
+    equip(EQUIP_OFF_HAND, 'towel');
+    return player;
+})();
 
 function populateRoom(room, dungeonLevel) {
     let maxMonstersPerRoom = evaluateStepFunction([[1, 2], [4, 3], [6, 5]], dungeonLevel),
@@ -197,8 +259,8 @@ function populateRoom(room, dungeonLevel) {
         troll: evaluateStepFunction([[3, 15], [5, 30], [7, 60]], dungeonLevel),
     };
     const monsterProps = {
-        orc:   {max_hp: 20, defense: 0, power: 4, ai},
-        troll: {max_hp: 30, defense: 2, power: 8, ai},
+        orc:   {base_max_hp: 20, base_defense: 0, base_power: 4, ai},
+        troll: {base_max_hp: 30, base_defense: 2, base_power: 8, ai},
     };
     
     const numMonsters = randint(0, maxMonstersPerRoom);
@@ -216,6 +278,8 @@ function populateRoom(room, dungeonLevel) {
         'lightning scroll': evaluateStepFunction([[4, 25]], dungeonLevel),
         'fireball scroll': evaluateStepFunction([[6, 25]], dungeonLevel),
         'confusion scroll': evaluateStepFunction([[2, 10]], dungeonLevel),
+        sword: evaluateStepFunction([[4, 5]], dungeonLevel),
+        shield: evaluateStepFunction([[8, 15]], dungeonLevel),
     };
     const numItems = randint(0, maxItemsPerRoom);
     for (let i = 0; i < numItems; i++) {
@@ -313,8 +377,8 @@ const mapColors = {
 function draw() {
     display.clear();
 
-    document.querySelector("#health-bar").style.width = `${Math.ceil(100*player.hp/player.max_hp)}%`;
-    document.querySelector("#health-text").textContent = ` HP: ${player.hp} / ${player.max_hp}`;
+    document.querySelector("#health-bar").style.width = `${Math.ceil(100*player.hp/player.effective_max_hp)}%`;
+    document.querySelector("#health-text").textContent = ` HP: ${player.hp} / ${player.effective_max_hp}`;
 
     let lightMap = computeLightMap(player.location, tileMap);
     let glyphMap = computeGlyphMap(entities);
@@ -375,11 +439,11 @@ function useItem(entity, item) {
     switch (item.type) {
     case 'healing potion': {
         const healing = 40;
-        if (entity.hp === entity.max_hp) {
+        if (entity.hp === entity.effective_max_hp) {
             print(`You are already at full health`, 'warning');
         } else {
             print(`Your wounds start to feel better!`, 'healing');
-            entity.hp = ROT.Util.clamp(entity.hp + healing, 0, entity.max_hp);
+            entity.hp = ROT.Util.clamp(entity.hp + healing, 0, entity.effective_max_hp);
             moveEntityTo(item, NOWHERE);
             enemiesMove();
         }
@@ -420,7 +484,14 @@ function useItem(entity, item) {
         break;
     }
     default: {
-        throw `useItem on unknown item ${item}`;
+        if (item.equipment_slot !== undefined) {
+            let oldItem = entities.get(player.equipment[item.equipment_slot]);
+            swapEquipment(player, item.location.slot, item.equipment_slot);
+            print(`You unquip ${oldItem.type} and equip ${item.type}.`, 'welcome');
+            enemiesMove();
+        } else {
+            throw `useItem on unknown item ${item}`;
+        }
     }
     }
 }
@@ -468,7 +539,7 @@ function takeDamage(source, target, amount) {
 }
 
 function attack(attacker, defender) {
-    let damage = attacker.power - defender.defense;
+    let damage = attacker.effective_power - defender.effective_defense;
     let color = attacker.id === player.id? 'player-attack' : 'enemy-attack';
     if (damage > 0) {
         print(`${attacker.name} attacks ${defender.name} for ${damage} hit points.`, color);
@@ -563,9 +634,8 @@ function playerPickupItem() {
     }
 
     print(`You pick up the ${item.name}!`, 'pick-up');
-    moveEntityTo(item, {carried: player.id, slot});
+    moveEntityTo(item, {carried_by: player.id, slot});
     enemiesMove();
-
 }
 
 function playerMoveBy(dx, dy) {
@@ -599,8 +669,8 @@ function playerGoDownStairs() {
     tileMap = createTileMap(tileMap.dungeonLevel + 1);
 
     // Heal the player
-    player.hp = ROT.Util.clamp(player.hp + Math.floor(player.max_hp / 2),
-                               0, player.max_hp);
+    player.hp = ROT.Util.clamp(player.hp + Math.floor(player.effective_max_hp / 2),
+                               0, player.effective_max_hp);
 
     print(`You take a moment to rest, and recover your strength.`, 'welcome');
     draw();
@@ -716,17 +786,23 @@ function createCharacterOverlay() {
         get visible() { return visible; },
         open() {
             const experienceToLevel = xpForLevel(player.level) - player.xp;
-            visible = true;
+            const equipmentHTML = Object.values(player.equipment)
+                  .filter(id => id !== null)
+                  .map(id => entities.get(id).type)
+                  .join(" and ");
             overlay.innerHTML = `<div>Character information</div>
              <ul>
                <li>Level: ${player.level}</li>
                <li>Experience: ${player.xp}</li>
                <li>Experience to Level: ${experienceToLevel}</li>
-               <li>Maximum HP: ${player.max_hp}</li>
-               <li>Attack: ${player.power}</li>
-               <li>Defense: ${player.defense}</li>
+               <li>Maximum HP: ${player.base_max_hp} + ${player.increased_max_hp}</li>
+               <li>Attack: ${player.base_power} + ${player.increased_power}</li>
+               <li>Defense: ${player.base_defense} + ${player.increased_defense}</li>
              </ul>
+             <p>Equipped: ${equipmentHTML}</p>
              <div><kbd>ESC</kbd> to exit</div>`;
+            
+            visible = true;
             overlay.classList.add('visible');
         },
         close() {
@@ -747,9 +823,9 @@ function createUpgradeOverlay() {
             visible = true;
             overlay.innerHTML = `<div>Level up! Choose a stat to raise:</div>
              <ul>
-               <li><kbd>A</kbd> Constitution (+20 HP, from ${player.max_hp})</li>
-               <li><kbd>B</kbd> Strength (+1 attack, from ${player.power})</li>
-               <li><kbd>C</kbd> Agility (+1 defense, from ${player.defense})</li>
+               <li><kbd>A</kbd> Constitution (+20 HP, from ${player.base_max_hp})</li>
+               <li><kbd>B</kbd> Strength (+1 attack, from ${player.base_power})</li>
+               <li><kbd>C</kbd> Agility (+1 defense, from ${player.base_defense})</li>
              </ul>`;
             overlay.classList.add('visible');
         },
@@ -874,14 +950,14 @@ function runAction(action) {
         let [_, stat] = action;
         switch (stat) {
         case 'hp':
-            player.max_hp += 20;
+            player.base_max_hp += 20;
             player.hp += 20;
             break;
         case 'str':
-            player.power += 1;
+            player.base_power += 1;
             break;
         case 'def':
-            player.defense += 1;
+            player.base_defense += 1;
             break;
         default:
             throw `invalid upgrade ${stat}`;
