@@ -1,0 +1,7 @@
+[[http://unmaintained.tech/badge.svg]]
+
+Each summer, the [[https://old.reddit.com/r/roguelikedev/][r/roguelikedev]] community has a [[https://old.reddit.com/r/roguelikedev/wiki/python_tutorial_series][tutorial series]] where we all follow along to build a roguelike.  I had attempted it in 2018 but got stuck in the middle. I attempted it again in 2020 and made it all the way through.
+
+I wrote mine in JavaScript instead of Python. Unlike some of the other JavaScript projects, I didn't use node.js or a build step like webpack. It's one html file and one js file included with a <script> tag. This is how I prefer to code small projects, and only switch to more organization once the project gets larger.
+
+[[https://www.redblobgames.com/x/2025-roguelike-dev/][I wrote notes]] about how my version differs from the Python tutorial, especially around UI, where I used the browser's HTML+CSS to build a UI instead of using a console menu. 
