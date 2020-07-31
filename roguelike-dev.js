@@ -14,7 +14,9 @@ let DEBUG_ALL_EXPLORED = false;
 
 const WIDTH = 60, HEIGHT = 25;
 const STORAGE_KEY = window.location.pathname + '-savegame';
-ROT.RNG.setSeed(127);
+
+/* useful for debugging */
+/* ROT.RNG.setSeed(127); */
 
 const display = new ROT.Display({width: 60, height: 25, fontSize: 16, fontFamily: 'monospace'});
 display.getContainer().setAttribute('id', "game");
