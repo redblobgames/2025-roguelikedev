@@ -1,0 +1,187 @@
+<figure>
+  <div id="status-bar"></div>
+  <div id="health-bar"></div>
+  <div id="health-text"></div>
+  <div id="inventory-use" class="overlay"></div>
+  <div id="inventory-drop" class="overlay"></div>
+  <div id="upgrade" class="overlay"></div>
+  <div id="targeting" class="overlay"></div>
+  <div id="character" class="overlay"></div>
+  <div id="messages"></div>
+  <div id="message-overlay"></div>
+  <div id="instructions"></div>
+</figure>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+    
+    figure {
+        text-align: left;
+        display: grid;
+        justify-content: center;
+        grid-template-columns: min-content;
+        grid-template-areas: "game" "status-bar" "message-area" "instructions";
+    }
+    canvas#game { 
+        grid-area: game;
+        z-index: 1;
+        display: block;
+        max-width: unset;
+        opacity: 0.5;
+    }
+    canvas#game:focus {
+        outline: none;
+        opacity: 1.0;
+    }
+
+    .overlay {
+        grid-area: game;
+        z-index: 0;
+        height: auto;
+        align-self: center;
+        padding: 0.5em;
+        line-height: 1.0;
+        font-family: monospace;
+        font-size: 0.8em;
+        opacity: 0;
+    }
+    .overlay.visible {
+        z-index: 2;
+        pointer-events: none;
+        box-shadow: 0 1px 4px -3px white;
+        opacity: 1;
+    }
+    .overlay ul {
+        column-count: 2;
+        column-gap: 1em;
+        column-fill: balance;
+    }
+    .overlay li {
+        list-style-type: none;
+    }
+    .overlay kbd {
+        display: inline-block;
+        border: 1px solid hsla(0, 0%, 0%, 0.5);
+        padding: 2px 4px;
+        font-weight: normal;
+    }
+    #upgrade {
+        background: hsl(180, 20%, 20%);
+        color: white;
+    }
+    #upgrade ul {
+        column-count: 1;
+    }
+    #upgrade kbd {
+        background: hsl(180, 50%, 30%);
+        color: cyan;
+    }
+    #inventory-use {
+        background: hsl(200, 10%, 20%);
+        color: white;
+    }
+    #inventory-drop {
+        background: hsl(0, 20%, 20%);
+        color: white;
+    }
+    #inventory-use kbd {
+        background: hsl(150, 50%, 30%);
+        color: cyan;
+    }
+    #inventory-drop kbd {
+        background: hsl(60, 50%, 30%);
+        color: yellow;
+    }
+    #targeting {
+        background: hsla(60, 10%, 100%, 0.1);
+        pointer-events: auto;
+        color: white;
+        text-align: center;
+        height: 100%;
+    }
+
+    #character {
+        background: hsla(330, 10%, 20%, 0.5);
+        color: white;
+    }
+
+    #instructions {
+        height: 1.2em;
+        grid-area: instructions;
+        text-align: center;
+    }
+
+    #messages, #message-overlay {
+        grid-area: message-area;
+        width: 100%;
+        height: 8em;
+        font-family: var(--monospace), monospace;
+        font-size: 0.8em;
+        line-height: 1.0;
+    }
+    #messages {
+        padding: 0.5em 1em;
+        background: hsl(60, 10%, 10%);
+        color: white;
+        overflow-x: hidden;
+        overflow-y: scroll;
+        scrollbar-width: none; /* firefox supports the standard */
+    }
+    #messages::-webkit-scrollbar { /* but chrome, safari do not, naturally */
+        width: 0;
+    }
+    #messages > div {
+        margin-left: 1em;
+        margin-bottom: 0.25em;
+        text-indent: -1em;
+    }
+    #messages > div.welcome       { color: hsl(300,  50%,  70%); }
+    #messages > div.info               { color: hsl(2200,  10%,  80%); }
+    #messages > div.player-attack { color: hsl( 30,  10%,  80%); }
+    #messages > div.player-die    { color: hsl(  0, 100%,  50%); }
+    #messages > div.enemy-attack  { color: hsl(  0,  50%,  80%); }
+    #messages > div.enemy-die     { color: hsl(150,  30%,  70%); }
+    #messages > div.warning       { color: hsl( 60,  50%,  70%); }
+    #messages > div.error         { color: hsl(  0,  75%,  50%); }
+    #messages > div.pick-up       { color: hsl(220,  50%,  80%); }
+    #messages > div.healing       { color: hsl(150,  50%,  70%); }
+
+    #message-overlay {
+        z-index: 2; /* needed for chrome but not firefox or safari; may be a browser bug */
+        height: 0%;
+        padding: 0.5em 1em;
+        opacity: 0.0;
+        pointer-events: none; /* so scroll events go down to the #messages div */
+        white-space: pre-wrap;
+        background: black;
+        color: white;
+        transition: all 0.3s;
+    }
+    #message-overlay.visible {
+        height: 100%;
+        opacity: 1.0;
+        background: hsl(200, 50%, 30%);
+        transition: all 0s;
+    }
+
+    #status-bar {
+        grid-area: status-bar;
+        width: 100%;
+        background: hsl(0, 50%, 20%);
+    }
+    #health-bar {
+        grid-area: status-bar;
+        background: hsl(200, 50%, 40%);
+    }
+    #health-text {
+        grid-area: status-bar;
+        font-size: 0.8em;
+        font-family: var(--sans-serif), sans-serif;
+        color: white;
+        text-align: center;
+    }
+</style>
+<script defer="defer" src="third-party/rot.js"></script>
+<script defer="defer" src="roguelike-dev.js"></script>

@@ -2,34 +2,33 @@
 #+date: <2020-06-18 Thu>
 #+options: toc:nil
 
+#+begin_comment
+
+
+NOTE: this org file acted as my "diary". I exported it to html:
+
+https://www.redblobgames.com/x/2025-roguelike-dev/
+
+
+I don't expect that the org file itself will be useful to you, as it uses features that are only in my custom version of emacs. However, the html+js should work on its own.
+
+#+end_comment
+
+
 I had previously followed the r/roguelikedev summer tutorial series, but never finished.
 I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]] this time.
 
-#+begin_export html
-<figure>
-  <div id="status-bar"/>
-  <div id="health-bar"/>
-  <div id="health-text"/>
-  <div id="inventory-use" class="overlay"/>
-  <div id="inventory-drop" class="overlay"/>
-  <div id="upgrade" class="overlay"/>
-  <div id="targeting" class="overlay"/>
-  <div id="character" class="overlay"/>
-  <div id="messages"/>
-  <div id="message-overlay"/>
-  <div id="instructions"/>
-</figure>
-#+end_export
+#+include: "game.html" export html
 
-Source code: [[href:roguelike-dev.js][roguelike-dev.js]] (all one file, no build step)
+Source code: [[href:game.html][game.html]] + [[href:roguelike-dev.js][roguelike-dev.js]] (no build step) - and [[https://github.com/redblobgames/2025-roguelikedev][on github]].
 
-My goal is /not/ to implement my own features, but instead focus on only the features from the Python + tcod tutorial, implementing them in JavaScript + browser + rot.js instead. I'm willing to implement the data structures, code style, etc., differently from the tutorial to better fit JavaScript and my own coding style. However, every time I think of a /game feature/ I'd like to add or do differently, I add it to a text file somewhere, and then I can come back to it /after/ I finish the tutorial. 
+My goal is /not/ to implement my own features, but instead focus on only the features from the Python + tcod tutorial, implementing them in JavaScript + browser + rot.js instead. I'm willing to implement the data structures, code style, etc., differently from the tutorial to better fit JavaScript and my own coding style. However, every time I think of a /game feature/ I'd like to add or do differently, I add it to a text file somewhere, and then I can come back to it /after/ I finish the tutorial.
 
 * Drawing the ‘@’ symbol and moving it around
 
 #+TOC: headlines 2
 
-I'm going to follow the [[http://rogueliketutorials.com/tutorials/tcod/][Roguelike Tutorial for Python]] (2019 version, not the 2020 version, for various reasons) and adapt it for [[https://ondras.github.io/rot.js/hp/][rot.js]]. 
+I'm going to follow the [[http://rogueliketutorials.com/tutorials/tcod/][Roguelike Tutorial for Python]] (2019 version, not the 2020 version, for various reasons) and adapt it for [[https://ondras.github.io/rot.js/hp/][rot.js]].
 
 ** Setup
 
@@ -60,9 +59,9 @@ A warning about my coding style: I follow /make it work before making the code n
 
 ** Key input
 
-[[http://rogueliketutorials.com/tutorials/tcod/part-1/][Part 1 of the roguelike tutorial]] covers setting up a screen and keyboard handler. I already set up the screen in the previous section so now I need to set up a keyboard handler. Unlike Python, we don't write an event loop in the browser. The browser already is running an event loop, and we add event handlers to it. 
+[[http://rogueliketutorials.com/tutorials/tcod/part-1/][Part 1 of the roguelike tutorial]] covers setting up a screen and keyboard handler. I already set up the screen in the previous section so now I need to set up a keyboard handler. Unlike Python, we don't write an event loop in the browser. The browser already is running an event loop, and we add event handlers to it.
 
-There are various places to attach a keyboard event handler. 
+There are various places to attach a keyboard event handler.
 
 - The [[https://ondras.github.io/rot.js/manual/#keyboard][rot.js manual]] suggests using an ~<input>~ element for event handlers. I decided not to do this. If that input ever loses focus, I don't know how to get focus back. Clicking an input box is what I think of when I'm typing input text but not what I expect to do when moving around on the map.
 - One [[http://www.roguebasin.roguelikedevelopment.org/index.php?title=Rot.js_tutorial,_part_1][rot.js tutorial]] attaches the event handlers to the global =window= object. I decided not to do this. There are times when I am typing elsewhere on the page (typing into the site search box, or adding a comment, or maybe even in-game actions like typing my name in). I don't want the game to treat those keystrokes as player actions.
@@ -170,7 +169,7 @@ function handleKeys(keyCode) {
     let action = actions[keyCode];
     return action ? action() : undefined;
 }
-    
+
 function handleKeyDown(event) {
     let action = handleKeys(event.keyCode);
     if (action) {
@@ -264,7 +263,7 @@ function draw() {
 
 Looks good. The player and monster have different appearances.
 
-I can't keep adding a variable for each entity. Part 2 of the Roguelike Tutorial converts the individual entity variables into an set of entities. 
+I can't keep adding a variable for each entity. Part 2 of the Roguelike Tutorial converts the individual entity variables into an set of entities.
 I was going to use an array or a Set but decided to use a Map instead.
 
 #+begin_src js
@@ -371,7 +370,7 @@ function draw() {
     fov.compute(player.x, player.y, 10, (x, y, r, visibility) => {
         lightMap.set(map.key(x, y), visibility);
     });
-                
+
     const colors = {
         [false]: {[false]: "rgb(50, 50, 150)", [true]: "rgb(0, 0, 100)"},
         [true]: {[false]: "rgb(200, 180, 50)", [true]: "rgb(130, 110, 50)"}
@@ -429,7 +428,7 @@ function draw() {
     for (let entity of entities.values()) {
         glyphMap.set(map.key(entity.x, entity.y), entityGlyph(entity.type));
     }
-    
+
     const mapColors = {
         [false]: {[false]: "rgb(50, 50, 150)", [true]: "rgb(0, 0, 100)"},
         [true]: {[false]: "rgb(200, 180, 50)", [true]: "rgb(130, 110, 50)"}
@@ -542,7 +541,7 @@ function draw() {
 
     let lightMap = computeLightMap(player, tileMap);
     let glyphMap = computeGlyphMap(entities);
-    
+
     for (let y = 0; y < HEIGHT; y++) {
         for (let x = 0; x < WIDTH; x++) {
             let tile = tileMap.get(x, y);
@@ -749,15 +748,15 @@ Back to the Python tutorial.
 
 This is the part of the tutorial where the real game logic starts. My goal is to implement the /features/ from the Python tutorial, but not necessarily with the same code structure.
 
-My own coding style is to prefer separating “static” from “instance” data and functions. Static properties are part of /the game/. Instance properties are part of /running the game/. For example, the troll's color is a static property of the troll. The color is decided before any trolls exist. It is the /same/ for all trolls, but it might be /different/ if I change the program code. A position is an instance property of the troll. It is /different/ for each troll, but it'll be the /same/ if I load the save file in new version of the game. 
+My own coding style is to prefer separating “static” from “instance” data and functions. Static properties are part of /the game/. Instance properties are part of /running the game/. For example, the troll's color is a static property of the troll. The color is decided before any trolls exist. It is the /same/ for all trolls, but it might be /different/ if I change the program code. A position is an instance property of the troll. It is /different/ for each troll, but it'll be the /same/ if I load the save file in new version of the game.
 
-I also prefer to use “free functions” (static) and “plain old data” (instance) instead of combining them into classes. It makes things like persistence and multiplayer easier for me to implement. I'm going to do this not only for the entity but also the fighter and ai components. 
+I also prefer to use “free functions” (static) and “plain old data” (instance) instead of combining them into classes. It makes things like persistence and multiplayer easier for me to implement. I'm going to do this not only for the entity but also the fighter and ai components.
 
 For the entities, I put the static properties into a =ENTITY_PROPERTIES= lookup table, and I used Javascript prototype inheritance to attach it to each entity.
 
-For the fighter and AI, I decided to look ahead in the tutorial to see how they will get used. 
+For the fighter and AI, I decided to look ahead in the tutorial to see how they will get used.
 
-- For the fighter, I was planning to treat =defense= and =power= and =max_hp= as static properties, and =hp= as a per object property, but it looks like =defense= and =power= and =max_hp= all become computed properties, so maybe this is a premature design decision. The =attack()= function seems to be the same for all entities so I think I'll leave it out of the entity/component (in ECS it'd be a "system"). I'm seeing no particular value in making this a separate component right now. 
+- For the fighter, I was planning to treat =defense= and =power= and =max_hp= as static properties, and =hp= as a per object property, but it looks like =defense= and =power= and =max_hp= all become computed properties, so maybe this is a premature design decision. The =attack()= function seems to be the same for all entities so I think I'll leave it out of the entity/component (in ECS it'd be a "system"). I'm seeing no particular value in making this a separate component right now.
 - For the AI, it's either a basic monster that moves towards the player, or a confused monster that moves randomly for some number of turns and then reverts to the previous AI behavior. I think I could treat that as a function, but functions don't work well with persistence, so I'm going to treat it as data that has a =type= field, like I did with entities.
 
 I'm going to see how far I can get without adding an =owner= pointer. I strongly prefer not to have it, because it leads to a circularity in the data, which will make persistence more complicated. In an ECS this circularity would be broken by storing an entity id instead of a pointer to the entity object, but I'm not using an ECS here.
@@ -918,7 +917,7 @@ While I was at it, I also added a fade-out effect using =transition: all 0.3s= t
 
 * Items and Inventory
 
-Part 8 of the Python tutorial covers items and inventory. 
+Part 8 of the Python tutorial covers items and inventory.
 
 ** Items and locations
 
@@ -1142,7 +1141,7 @@ Part 11 covers several things:
 
 The Python tutorial has a render order: actor > item > corpse > stairs. That means a corpse will block the stairs if you are in the room, but you can see the stairs once you step outside the field of view. I switched stairs and corpse.
 
-Because of the way I draw things, if there's a monster on top of the stairs, the monster is to be drawn. But if the monster isn't in the field of view, that spot will be hidden. And that means the stairs will be hidden too. This is a bug but I'll have to redesign some of my drawing code to fix it. I added it to my list of things to do, but I'm not going to work on it right now. It seems like a rare situation. I like to accumulate several related bugs  before some code redesign so that I can tackle all those problems together. 
+Because of the way I draw things, if there's a monster on top of the stairs, the monster is to be drawn. But if the monster isn't in the field of view, that spot will be hidden. And that means the stairs will be hidden too. This is a bug but I'll have to redesign some of my drawing code to fix it. I added it to my list of things to do, but I'm not going to work on it right now. It seems like a rare situation. I like to accumulate several related bugs  before some code redesign so that I can tackle all those problems together.
 
 Another possible issue is that there can be two items in one tile, and no way to access them separately.
 
@@ -1276,7 +1275,7 @@ Their model: equipment is a subset of inventory. An item is in your inventory an
 
 My model: equipment is another location, like inventory. An item is in your inventory /or/ in your equipment. If you drop an item from inventory, it is not unequipped because inventory items are not equipped.
 
-But now I need a way to unequip things /into/ your inventory. And what if the inventory is full? 
+But now I need a way to unequip things /into/ your inventory. And what if the inventory is full?
 
 Partway down the Python tutorial has the player have some initial equipment. I'm going to take this further and say that the player has /all/ equipment slots filled. Always. When you equip a new item from your inventory, it /swaps position/ with the item that you already had equipped there. This solves the problem with unequipping into a full inventory, because you can only unequip by equipping something else.
 
@@ -1316,187 +1315,19 @@ I don't think I'll use any of this code in a future project, but the code itself
 #+begin_export html
 <x:footer>
   <style>
-      table.standard { border: 0; }
-      table.standard th, table.standard td { font-family: var(--sans-serif); border-left-width: 0; border-right-width: 0; border-color: #ddd; }
-      table.standard th { border-top-width: 0; background: unset; }
+    table.standard { border: 0; }
+    table.standard th, table.standard td { font-family: var(--sans-serif); border-left-width: 0; border-right-width: 0; border-color: #ddd; }
+    table.standard th { border-top-width: 0; background: unset; }
 
-      .figure img { 
-          display: block; 
-          margin: auto; 
-          border: 2px solid #999; 
-          box-shadow: 0 1px 2px 2px rgba(0,0,0,0.2); 
-      }
-
-      figure {
-          text-align: left;
-          display: grid;
-          justify-content: center;
-          grid-template-columns: min-content;
-          grid-template-areas: "game" "status-bar" "message-area" "instructions";
-      }
-      canvas#game { 
-          grid-area: game;
-          z-index: 1;
-          display: block;
-          max-width: unset;
-          opacity: 0.5;
-      }
-      canvas#game:focus {
-          outline: none;
-          opacity: 1.0;
-      }
-
-      .overlay {
-          grid-area: game;
-          z-index: 0;
-          height: auto;
-          align-self: center;
-          padding: 0.5em;
-          line-height: 1.0;
-          font-family: monospace;
-          font-size: 0.8em;
-          opacity: 0;
-      }
-      .overlay.visible {
-          z-index: 2;
-          pointer-events: none;
-          box-shadow: 0 1px 4px -3px white;
-          opacity: 1;
-      }
-      .overlay ul {
-          column-count: 2;
-          column-gap: 1em;
-          column-fill: balance;
-      }
-      .overlay li {
-          list-style-type: none;
-      }
-      .overlay kbd {
-          display: inline-block;
-          border: 1px solid hsla(0, 0%, 0%, 0.5);
-          padding: 2px 4px;
-          font-weight: normal;
-      }
-      #upgrade {
-          background: hsl(180, 20%, 20%);
-          color: white;
-      }
-      #upgrade ul {
-          column-count: 1;
-      }
-      #upgrade kbd {
-          background: hsl(180, 50%, 30%);
-          color: cyan;
-      }
-      #inventory-use {
-          background: hsl(200, 10%, 20%);
-          color: white;
-      }
-      #inventory-drop {
-          background: hsl(0, 20%, 20%);
-          color: white;
-      }
-      #inventory-use kbd {
-          background: hsl(150, 50%, 30%);
-          color: cyan;
-      }
-      #inventory-drop kbd {
-          background: hsl(60, 50%, 30%);
-          color: yellow;
-      }
-      #targeting {
-          background: hsla(60, 10%, 100%, 0.1);
-          pointer-events: auto;
-          color: white;
-          text-align: center;
-          height: 100%;
-      }
-
-      #character {
-          background: hsla(330, 10%, 20%, 0.5);
-          color: white;
-       }
-
-      #instructions {
-          height: 1.2em;
-          grid-area: instructions;
-          text-align: center;
-      }
-
-      #messages, #message-overlay {
-          grid-area: message-area;
-          width: 100%;
-          height: 8em;
-          font-family: var(--monospace), monospace;
-          font-size: 0.8em;
-          line-height: 1.0;
-      }
-      #messages {
-          padding: 0.5em 1em;
-          background: hsl(60, 10%, 10%);
-          color: white;
-          overflow-x: hidden;
-          overflow-y: scroll;
-          scrollbar-width: none; /* firefox supports the standard */
-      }
-      #messages::-webkit-scrollbar { /* but chrome, safari do not, naturally */
-          width: 0;
-      }
-      #messages > div {
-          margin-left: 1em;
-          margin-bottom: 0.25em;
-          text-indent: -1em;
-      }
-      #messages > div.welcome       { color: hsl(300,  50%,  70%); }
-      #messages > div.info               { color: hsl(2200,  10%,  80%); }
-      #messages > div.player-attack { color: hsl( 30,  10%,  80%); }
-      #messages > div.player-die    { color: hsl(  0, 100%,  50%); }
-      #messages > div.enemy-attack  { color: hsl(  0,  50%,  80%); }
-      #messages > div.enemy-die     { color: hsl(150,  30%,  70%); }
-      #messages > div.warning       { color: hsl( 60,  50%,  70%); }
-      #messages > div.error         { color: hsl(  0,  75%,  50%); }
-      #messages > div.pick-up       { color: hsl(220,  50%,  80%); }
-      #messages > div.healing       { color: hsl(150,  50%,  70%); }
-
-      #message-overlay {
-          z-index: 2; /* needed for chrome but not firefox or safari; may be a browser bug */
-          height: 0%;
-          padding: 0.5em 1em;
-          opacity: 0.0;
-          pointer-events: none; /* so scroll events go down to the #messages div */
-          white-space: pre-wrap;
-          background: black;
-          color: white;
-          transition: all 0.3s;
-      }
-      #message-overlay.visible {
-          height: 100%;
-          opacity: 1.0;
-          background: hsl(200, 50%, 30%);
-          transition: all 0s;
-      }
-
-      #status-bar {
-          grid-area: status-bar;
-          width: 100%;
-          background: hsl(0, 50%, 20%);
-      }
-      #health-bar {
-          grid-area: status-bar;
-          background: hsl(200, 50%, 40%);
-      }
-      #health-text {
-          grid-area: status-bar;
-          font-size: 0.8em;
-          font-family: var(--sans-serif), sans-serif;
-          color: white;
-          text-align: center;
-      }
+    .figure img {
+        display: block;
+        margin: auto;
+        border: 2px solid #999;
+        box-shadow: 0 1px 2px 2px rgba(0,0,0,0.2);
+    }
   </style>
-  <script src="third-party/rot.js"></script>
-  <script src="roguelike-dev.js"></script>
 
-  Created 18 Jun 2020; &#160;
+  Created 18 Jun 2020 with the help of <a href="https://ondras.github.io/rot.js/hp/">rot.js</a>; &#160;
   <!-- hhmts start -->Last modified: 30 Jul 2020<!-- hhmts end -->
 </x:footer>
 #+end_export
