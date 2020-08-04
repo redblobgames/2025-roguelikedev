@@ -400,6 +400,28 @@ function draw() {
             display.draw(x, y, ch, fg, bg);
         }
     }
+
+    updateInstructions();
+}
+
+function updateInstructions() {
+    const instructions = document.getElementById('game-instructions');
+    let standingOn = allEntitiesAt(player.location.x, player.location.y);
+    
+    let html = ``;
+    if (currentKeyHandler() === handlePlayerKeys) {
+        html = `Arrows move, <kbd>S</kbd>ave`;
+        let hasSavedGame = window.localStorage.getItem(STORAGE_KEY) !== null;
+        let hasItems = player.inventory.filter(id => id !== null).length > 0;
+        let onItem = standingOn.filter(e => e.item).length > 0;
+        let onStairs = standingOn.filter(e => e.stairs).length > 0;
+        if (hasSavedGame) html += `/<kbd>R</kbd>estore`;
+        html += ` game`;
+        if (hasItems) html += `, <kbd>U</kbd>se, <kbd>D</kbd>rop`;
+        if (onItem) html += `, <kbd>G</kbd>et item`;
+        if (onStairs) html += `, <kbd>&gt;</kbd> stairs`;
+    }
+    instructions.innerHTML = html;
 }
 
 
@@ -1005,17 +1027,19 @@ function runAction(action) {
     draw();
 }
 
+function currentKeyHandler() {
+    return targetingOverlay.visible? handleTargetingKeys
+         : upgradeOverlay.visible? handleUpgradeKeys
+         : inventoryOverlayUse.visible? handleInventoryKeys('use')
+         : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
+         : characterOverlay.visible? handleCharacterKeys
+         : player.dead? handlePlayerDeadKeys
+         : handlePlayerKeys;
+}
+
 function handleKeyDown(event) {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
-    let handleKeys =
-        targetingOverlay.visible? handleTargetingKeys
-        : upgradeOverlay.visible? handleUpgradeKeys
-        : inventoryOverlayUse.visible? handleInventoryKeys('use')
-        : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
-        : characterOverlay.visible? handleCharacterKeys
-        : player.dead? handlePlayerDeadKeys
-        : handlePlayerKeys;
-    let action = handleKeys(event.key);
+    let action = currentKeyHandler()(event.key);
     if (action) {
         event.preventDefault();
         runAction(action);
@@ -1036,21 +1060,21 @@ function handleMouseout(event) {
 
 function setupInputHandlers(display) {
     const canvas = display.getContainer();
-    const instructions = document.getElementById('instructions');
+    const instructions = document.getElementById('focus-instructions');
     canvas.setAttribute('tabindex', "1");
     canvas.addEventListener('keydown', handleKeyDown);
     canvas.addEventListener('mousemove', handleMousemove);
     canvas.addEventListener('mouseout', handleMouseout);
-    canvas.addEventListener('blur', () => { instructions.textContent = "Click game for keyboard focus"; });
-    canvas.addEventListener('focus', () => { instructions.textContent = "Arrow keys to move, [G]et, [U]se, [D]rop, [S]ave game, [R]estore game, > for stairs"; });
+    canvas.addEventListener('blur', () => { instructions.classList.add('visible'); });
+    canvas.addEventListener('focus', () => { instructions.classList.remove('visible'); });
     canvas.focus();
 }
 
 print("Hello and welcome, adventurer, to yet another dungeon!", 'welcome');
-draw();
 const inventoryOverlayUse = createInventoryOverlay('use');
 const inventoryOverlayDrop = createInventoryOverlay('drop');
 const targetingOverlay = createTargetingOverlay();
 const upgradeOverlay = createUpgradeOverlay();
 const characterOverlay = createCharacterOverlay();
 setupInputHandlers(display);
+draw();

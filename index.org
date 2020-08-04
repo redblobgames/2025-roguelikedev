@@ -26,8 +26,6 @@ My goal is /not/ to implement my own features, but instead focus on only the fea
 
 * Drawing the ‘@’ symbol and moving it around
 
-#+TOC: headlines 2
-
 I'm going to follow the [[http://rogueliketutorials.com/tutorials/tcod/][Roguelike Tutorial for Python]] (2019 version, not the 2020 version, for various reasons) and adapt it for [[https://ondras.github.io/rot.js/hp/][rot.js]].
 
 ** Setup
@@ -54,6 +52,8 @@ display.draw(5, 4, '@');
 Set the =fontFamily= property if you want to override the default browser monospace font. For example, =fontFamily: "Roboto Mono"=.
 
 [[./screenshots/1.png]]
+
+#+TOC: headlines 2
 
 A warning about my coding style: I follow /make it work before making the code nice/. That means I'll use plenty of global variables and hacks at first, and clean up some of them later. Don't look at my code as an example of how to structure a program "properly".
 
@@ -1312,6 +1312,10 @@ My code is nowhere near as nicely structured as the Python code, but this is oft
 
 I don't think I'll use any of this code in a future project, but the code itself is not the valuable part of following this tutorial. I learned the design patterns and the pieces that went into this type of game.
 
+* Future
+
+After I finished, I added one more thing: I changed the instructions line from one line of static text to one line of html, constructed to match where you are in the game. If you are standing over stairs, it will tell you ~[>] stairs~. If you are standing over an item, it will tell you ~[g]et item~. The problem is that the logic for determining whether something is a valid action is now in /three/ places: the keyboard handler, the instructions, and the actual action handler. The instructions need to know things like which overlay is displaying. I think this would be a useful place to have some type of abstraction for the logic saying which actions are valid.
+
 #+begin_export html
 <x:footer>
   <style>
@@ -1328,6 +1332,6 @@ I don't think I'll use any of this code in a future project, but the code itself
   </style>
 
   Created 18 Jun 2020 with the help of <a href="https://ondras.github.io/rot.js/hp/">rot.js</a>; &#160;
-  <!-- hhmts start -->Last modified: 30 Jul 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 04 Aug 2020<!-- hhmts end -->
 </x:footer>
 #+end_export
