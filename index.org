@@ -16,7 +16,7 @@ I don't expect that the org file itself will be useful to you, as it uses featur
 
 
 I had previously followed the r/roguelikedev summer tutorial series, but never finished.
-I'm trying again this year, using [[https://ondras.github.io/rot.js/hp/][rot.js]] this time.
+I tried again this year (2020), using [[https://ondras.github.io/rot.js/hp/][rot.js]] this time, and finished. 🎉
 
 #+include: "game.html" export html
 
@@ -25,10 +25,16 @@ Source code: [[href:game.html][game.html]] + [[href:roguelike-dev.js][roguelike-
 My goal is /not/ to implement my own features, but instead focus on only the features from the Python + tcod tutorial, implementing them in JavaScript + browser + rot.js instead. I'm willing to implement the data structures, code style, etc., differently from the tutorial to better fit JavaScript and my own coding style. However, every time I think of a /game feature/ I'd like to add or do differently, I add it to a text file somewhere, and then I can come back to it /after/ I finish the tutorial.
 
 * Drawing the ‘@’ symbol and moving it around
+:PROPERTIES:
+:CUSTOM_ID: drawing-the-symbol-and-moving-it-around
+:END:
 
 I'm going to follow the [[http://rogueliketutorials.com/tutorials/tcod/][Roguelike Tutorial for Python]] (2019 version, not the 2020 version, for various reasons) and adapt it for [[https://ondras.github.io/rot.js/hp/][rot.js]].
 
 ** Setup
+:PROPERTIES:
+:CUSTOM_ID: setup
+:END:
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-0/][Part 0]] of the tutorial covers setting up Python and libtcod. I'll instead set up rot.js.
 
@@ -58,6 +64,9 @@ Set the =fontFamily= property if you want to override the default browser monosp
 A warning about my coding style: I follow /make it work before making the code nice/. That means I'll use plenty of global variables and hacks at first, and clean up some of them later. Don't look at my code as an example of how to structure a program "properly".
 
 ** Key input
+:PROPERTIES:
+:CUSTOM_ID: key-input
+:END:
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-1/][Part 1 of the roguelike tutorial]] covers setting up a screen and keyboard handler. I already set up the screen in the previous section so now I need to set up a keyboard handler. Unlike Python, we don't write an event loop in the browser. The browser already is running an event loop, and we add event handlers to it.
 
@@ -121,6 +130,9 @@ I often start out with a =console.log= to make sure that a function is getting c
 What's next for Part 1? I need to make arrow keys move the player around. I can't do that yet, because I don't have a player position.
 
 ** Player movement
+:PROPERTIES:
+:CUSTOM_ID: player-movement
+:END:
 
 I need to keep track of the player position and then change it when a key is pressed.
 
@@ -203,6 +215,9 @@ I'm going to skip these two.
 Note: I later changed the code from using =keyCode= to using =key=. This is a newer browser feature, and it provides a string name of the key that was pressed, handling shifted keys too. For example, =keyCode= doesn't distinguish between ~/~ and ~?~ because they are on the same key, but =key= will be different.
 
 * The generic Entity, the render functions, and the map
+:PROPERTIES:
+:CUSTOM_ID: the-generic-entity-the-render-functions-and-the-map
+:END:
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-2/][Part 2]] of the tutorial covers entities. My design differs slightly from the tutorial:
 
@@ -289,6 +304,9 @@ function draw() {
 #+end_src
 
 * Generating a dungeon
+:PROPERTIES:
+:CUSTOM_ID: generating-a-dungeon
+:END:
 
 The second half of [[http://rogueliketutorials.com/tutorials/tcod/part-2/][Part 2]] creates a map data structure, and Part 3 generates a dungeon map.  ROT.js includes dungeon map creation functions so I'll use one of their algorithms. ROT will call a callback function for each map tile, 0 for walkable and 1 for wall. I'm going to store this data in a Map, indexed by a string =x,y=. For example at position x=3, y=5, I'll use a string key ="3,5"=.
 
@@ -357,6 +375,9 @@ function handleKeyDown(event) {
 The dungeon generation algorithm also generates a list of rooms and corridors. This might be useful later.
 
 * Field of view
+:PROPERTIES:
+:CUSTOM_ID: field-of-view
+:END:
 
 ROT.js includes [[https://ondras.github.io/rot.js/manual/#fov][two field of view algorithms]]. The field of view library is fairly easy to use. The /input/ callback lets it /ask/ you “can you see through x,y?” and the /output/ callback lets it /tell/ you “there's this much light at x,y”. I saved the results in a Map and used it for calculating the light level at any point. The Python tutorial doesn't use the light level but maybe I'll find something to do with it later.
 
@@ -567,6 +588,9 @@ And hey, it works!
 [[./screenshots/8.png]]
 
 * Placing enemies and kicking them (harmlessly)
+:PROPERTIES:
+:CUSTOM_ID: placing-enemies-and-kicking-them-harmlessly
+:END:
 
 Part 5 of the Python tutorial adds monsters to rooms.
 
@@ -679,6 +703,9 @@ The orc ponders the meaning of its existence.
 Great! Before I move on to the next part of the tutorial, I wanted to add a way to see the messages under the game screen.
 
 ** Console
+:PROPERTIES:
+:CUSTOM_ID: console
+:END:
 
 I updated the UI to have an extra div for messages, and put the instructions box below it. This is covered in the Python tutorial part 7, but I implemented it earlier:
 
@@ -743,6 +770,9 @@ Back to the Python tutorial.
 
 
 * Doing (and taking) some damage
+:PROPERTIES:
+:CUSTOM_ID: doing-and-taking-some-damage
+:END:
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-6/][Part 6]] of the Python roguelike tutorial adds a “fighter” component with hp, max_hp, defense, power, and an “ai” component that tells the monster how to move.
 
@@ -788,8 +818,14 @@ It's starting to come together!
 [[./screenshots/13.png]]
 
 * Creating the Interface
+:PROPERTIES:
+:CUSTOM_ID: creating-the-interface
+:END:
 
 ** Health bar
+:PROPERTIES:
+:CUSTOM_ID: health-bar
+:END:
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-7/][Part 7]] of the Python tutorial covers three topics:
 
@@ -802,6 +838,9 @@ I already implemented the message area earlier. It's in HTML instead of in ROT.j
 [[./screenshots/14.png]]
 
 ** Message area, part 2
+:PROPERTIES:
+:CUSTOM_ID: message-area-part-2
+:END:
 
 I also improved the message area:
 
@@ -818,6 +857,9 @@ Version 2 of the Python tutorial also adds a way to scroll the message area, int
 I think it wouldn't be hard to add color /within/ lines. I did that with [[http://www-cs-students.stanford.edu/~amitp/Articles/SRE-Documentation.html][my DOS games]] and liked the effect. But for now I'm sticking to implementing the features from version 1 of the Python tutorial.
 
 ** Mouse info
+:PROPERTIES:
+:CUSTOM_ID: mouse-info
+:END:
 
 The Python tutorial fits the mouse handling into the main event loop but the browser has its own event loop, so I deviated from the tutorial's approach.
 
@@ -916,10 +958,16 @@ But … this broke the message area scrolling! The problem is that the scroll mo
 While I was at it, I also added a fade-out effect using =transition: all 0.3s= to =#message-overlay= and =transition: all 0s= to =#message-overlay.visible=. When making the overlay visible, it will have no transition (0s) but when making the overlay invisible it will use a quick transition (0.3s).
 
 * Items and Inventory
+:PROPERTIES:
+:CUSTOM_ID: items-and-inventory
+:END:
 
 Part 8 of the Python tutorial covers items and inventory.
 
 ** Items and locations
+:PROPERTIES:
+:CUSTOM_ID: items-and-locations
+:END:
 
 I decided to use a different representation than they use. To pick up an item, they /remove/ the entity from the global =entities= array, and then ignore the =x= and =y= fields on it.
 
@@ -970,6 +1018,9 @@ function moveEntityTo(entity, location) {
 This logic is tricky enough that I want to make sure I have plenty of assertions in there!
 
 ** Inventory actions
+:PROPERTIES:
+:CUSTOM_ID: inventory-actions
+:END:
 
 Part 8 also introduces an inventory UI. Since the browser already provides multiple UI elements, I wanted to try using them instead of creating my own as the Python version is forced to do. I created a new overlay ~<div id="inventory-overlay">~ and hid it when not in use.
 
@@ -986,6 +1037,9 @@ As with the message area, I needed to use CSS =pointer-events: none= on these in
 /I've been sharing less code as I go along, in part because the refactorings made it harder to show the changes, but also, because I'm spending more time on the code and less on this explanation of it./
 
 * Ranged scrolls and targeting
+:PROPERTIES:
+:CUSTOM_ID: ranged-scrolls-and-targeting
+:END:
 
 [[http://rogueliketutorials.com/tutorials/tcod/part-9/][Part 9]] adds new items:
 
@@ -1000,6 +1054,9 @@ This complicates the game state some more, because we need to remember /which/ i
 There's a little glitch with this idea: because I had been using =pointer-events: none=, mouse events don't go to the targeting overlay. Easy fix: set =pointer-events: auto=. But now when /clicking/ on the targeting overlay, the game loses focus! For now my workaround is to re-focus the game canvas after receiving a click on the targeting overlay, but I think this isn't a great solution.
 
 * Saving and loading
+:PROPERTIES:
+:CUSTOM_ID: saving-and-loading
+:END:
 
 The Python tutorial (v1) has complex objects that they save using the =shelve= module. In my project I've tried to keep the objects simple enough to fit into JSON. Did I succeed? Let's look at the world data:
 
@@ -1127,6 +1184,9 @@ Much better!
 The Python tutorial does a lot of other things to restructure the code but I didn't feel the need to do any of that.
 
 * Delving into the Dungeon
+:PROPERTIES:
+:CUSTOM_ID: delving-into-the-dungeon
+:END:
 
 Part 11 covers several things:
 
@@ -1138,6 +1198,9 @@ Part 11 covers several things:
 6. Character stats screen
 
 ** Stairs
+:PROPERTIES:
+:CUSTOM_ID: stairs
+:END:
 
 The Python tutorial has a render order: actor > item > corpse > stairs. That means a corpse will block the stairs if you are in the room, but you can see the stairs once you step outside the field of view. I switched stairs and corpse.
 
@@ -1146,6 +1209,9 @@ Because of the way I draw things, if there's a monster on top of the stairs, the
 Another possible issue is that there can be two items in one tile, and no way to access them separately.
 
 ** Dungeon levels
+:PROPERTIES:
+:CUSTOM_ID: dungeon-levels
+:END:
 
 I had hard-coded the player's starting location to work with the initial map for one particular seed. That doesn't work when generating new maps, so I checked the Python tutorial to see what they did. They start the player in the first generated room. That sounds like a good solution to me. I placed the player first because the monster generator will avoid placing another monster on top of a blocked tile.
 
@@ -1154,12 +1220,18 @@ The Python tutorial discards all entities other than the player when changing du
 A different design would be to change entities to ={x: y: z:}=. Then I wouldn't discard any entities when changing levels. This would allow going back to a previous level. To avoid scope creep I'm limiting features to what's in the Python tutorial, so I added this to my "future ideas" list.
 
 ** Experience points
+:PROPERTIES:
+:CUSTOM_ID: experience-points
+:END:
 
 This may be a little tricky, because I deviated from the Python tutorial a few weeks ago. They had /returned/ an object which described the message to print, whereas I had printed it directly. But now they're returning additional information like the experience points gained. Where will that fit into my code?
 
 I think if I keep going with this project I'd want to refactor this into an event system and not use the approach used by the tutorial. But for now I'm going to do the simplest thing that could possibly work. I'll only allow the player to gain xp.
 
 ** Player levels
+:PROPERTIES:
+:CUSTOM_ID: player-levels
+:END:
 
 The tutorial uses a Level component with =level_up_base= set to 200 and =level_up_factor= set to 150. I don't see myself varying these per instance, so I'm going to express this instead as a function that calculates the xp needed to reach a specific level. The tutorial has =current_xp= reset every time you gain a level. I'm going to have it always go up.
 
@@ -1214,6 +1286,9 @@ function gainXp(entity, amount) {
 #+end_src
 
 ** Level upgrade
+:PROPERTIES:
+:CUSTOM_ID: level-upgrade
+:END:
 
 After leveling up the Python tutorial immediately brings up a menu where you can choose an upgrade: constitution, strength, or agility. I'm going to implement this menu with an overlay, just as I did with inventory. This might be a good time to generalize the inventory menu code to work as any menu, like the Python tutorial has already done, but it wasn't immediately obvious how I should do that so I'm writing a new function to handle level upgrades, and will then figure out a general pattern later.
 
@@ -1222,6 +1297,9 @@ There's a logic bug in my code: if I leveled up twice in one combat action, I on
 [[./screenshots/19.png]]
 
 ** Character stats screen
+:PROPERTIES:
+:CUSTOM_ID: character-stats-screen
+:END:
 
 The character screen shows level, xp, xp to next level, max hp, attack, defense. In the Python tutorial it's formatted inside the game screen, but I'm going to use the browser's layout system to put it in an overlay, like I have done with inventory and upgrades.
 
@@ -1230,6 +1308,9 @@ The character screen shows level, xp, xp to next level, max hp, attack, defense.
 I like it.
 
 * Increasing Difficulty
+:PROPERTIES:
+:CUSTOM_ID: increasing-difficulty
+:END:
 
 I'm going to keep following the tutorial but I'm losing interest at this point. I think the problem is that I'm following the tutorial in part to /complete/ something, but I'm not especially interested in /the game itself/. The difficulty levels are about the game design rather than the implementation techniques I want to learn.
 
@@ -1266,10 +1347,16 @@ This section of the tutorial was pretty short.
 
 
 * Gearing up
+:PROPERTIES:
+:CUSTOM_ID: gearing-up
+:END:
 
 Ok, this is back to some interesting stuff. How do I want to support "equipment" separate from "inventory"? I'm going to use a slightly different model from what the Python tutorial uses.
 
 ** Equipment
+:PROPERTIES:
+:CUSTOM_ID: equipment
+:END:
 
 Their model: equipment is a subset of inventory. An item is in your inventory and can be equipped or unequipped. If you drop an item from inventory, you also unequip it. If you already had an item equipped when you equip a new one, you unequip the old one.
 
@@ -1282,6 +1369,9 @@ Partway down the Python tutorial has the player have some initial equipment. I'm
 I initially extended my =moveEntityTo= function to work with equipment but then decided to write a separate one =swapEquipment= which will perform the swap more simply than two moves, and ensure that the equipment slot is always full.
 
 ** Initial equipment
+:PROPERTIES:
+:CUSTOM_ID: initial-equipment
+:END:
 
 Equipment has to have properties =item: true, equipment_slot: X=. When equipped it will have =location: {equipped_by: entity, slot: X}=. Those =X='s have to be the same (equipment can only be put into a valid slot).
 
@@ -1292,6 +1382,9 @@ Before I had =moveEntityTo= to handle all the invariants, but now I don't have t
 1. =dagger.location= should be ={equipped_by: player.id, slot: main_hand_slot}=
 
 ** Bonuses
+:PROPERTIES:
+:CUSTOM_ID: bonuses
+:END:
 
 I ended up with these fields, where =F= is =max_hp=, =power=, or =defense=:
 
@@ -1305,6 +1398,9 @@ The character screen shows the base and increased values:
 [[./screenshots/20.png]]
 
 * Conclusion
+:PROPERTIES:
+:CUSTOM_ID: conclusion
+:END:
 
 This was a fun project. I had tried previously with Rust, but learning Rust /and/ learning to write a roguelike game was tackling two things when I should've tackled only one at a time. This time went better.
 
@@ -1313,8 +1409,32 @@ My code is nowhere near as nicely structured as the Python code, but this is oft
 I don't think I'll use any of this code in a future project, but the code itself is not the valuable part of following this tutorial. I learned the design patterns and the pieces that went into this type of game.
 
 * Future
+:PROPERTIES:
+:CUSTOM_ID: future
+:END:
 
 After I finished, I added one more thing: I changed the instructions line from one line of static text to one line of html, constructed to match where you are in the game. If you are standing over stairs, it will tell you ~[>] stairs~. If you are standing over an item, it will tell you ~[g]et item~. The problem is that the logic for determining whether something is a valid action is now in /three/ places: the keyboard handler, the instructions, and the actual action handler. The instructions need to know things like which overlay is displaying. I think this would be a useful place to have some type of abstraction for the logic saying which actions are valid.
+
+Other things I considered but didn't get around to:
+
+- [ ] make the light level vary more smoothly than visible/invisible
+- [ ] make all the keyboard controls work on touch screens
+- [ ] add keyboard controls for targeting and looking at the map
+- [ ] add mouseover feedback when targeting, such as showing the blast radius for the fireball spell
+- [ ] distinguish permanent and temporary messages, so for example "you can't move in that direction" could be a temporary message that shows up but doesn't stay in the message log
+- [ ] automatically pick up items like in brogue
+- [ ] ensure only one item is on a tile; right now you can drop multiple items on a tile, and there's no way to choose which to pick up
+- [ ] extend player vs enemies to factions so that anyone can attack anyone not in their faction
+- [ ] some way to start a new game without reloading the page
+- [ ] some way to delete your saved game to free up 90k of browser storage
+- [ ] a scrolling map so you always see yourself in the center
+- [ ] fix bug: if a monster is over the stairs, and you walk out of view, the stairs should be visible but are not
+- [ ] fix bug: if you level up twice in one combat hit (such as from a fireball hitting many enemies), you only get to upgrade attributes once
+- [ ] change the x,y location system to have x,y,z, and then have stairs that go back up so everything on previous levels is preserved
+- [ ] have monsters do something on their own
+- [ ] have corpses decay after some time
+- [ ] have monsters drop loot
+- [ ] try changing to a wasd+e+f scheme to see how that feels
 
 #+begin_export html
 <x:footer>
@@ -1323,7 +1443,7 @@ After I finished, I added one more thing: I changed the instructions line from o
     table.standard th, table.standard td { font-family: var(--sans-serif); border-left-width: 0; border-right-width: 0; border-color: #ddd; }
     table.standard th { border-top-width: 0; background: unset; }
 
-    .figure img {
+    figure img {
         display: block;
         margin: auto;
         border: 2px solid #999;
@@ -1332,6 +1452,6 @@ After I finished, I added one more thing: I changed the instructions line from o
   </style>
 
   Created 18 Jun 2020 with the help of <a href="https://ondras.github.io/rot.js/hp/">rot.js</a>; &#160;
-  <!-- hhmts start -->Last modified: 04 Aug 2020<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 23 Jun 2021<!-- hhmts end -->
 </x:footer>
 #+end_export

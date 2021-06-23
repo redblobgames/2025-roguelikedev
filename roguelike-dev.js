@@ -10,6 +10,10 @@
 
 /* global ROT */
 
+// TODO: A reader suggests creating a div once and modifying it for all overlays instead
+// of recreating it for each overlay. Performance wasn't a high priority for me at the time
+// so I didn't implement that.
+
 let DEBUG_ALL_EXPLORED = false;
 
 const WIDTH = 60, HEIGHT = 25;
