@@ -401,6 +401,8 @@ function draw() {
                 fg = glyph[1];
                 bg = glyph[2] || bg;
             }
+            // NOTE: to center the screen on the player:
+            // display.draw(x - player.location.x + (WIDTH>>1), y - player.location.y + (HEIGHT>>1), ch, fg, bg);
             display.draw(x, y, ch, fg, bg);
         }
     }
