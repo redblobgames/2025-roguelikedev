@@ -91,7 +91,7 @@ const [setOverlayMessage, setTemporaryOverlayMessage] = (() => {
     visuals: [char, fg, optional bg, true if can be seen outside fov]
     item: true if can go into inventory
     equipment_slot: 0–25 if it can go into equipment, undefined otherwise
- */
+*/
 const ENTITY_PROPERTIES = {
     player: { blocks: true, render_order: 5, visuals: ['@', "hsl(60, 100%, 70%)"], },
     stairs: { stairs: true, render_order: 1, visuals: ['>', "hsl(200, 100%, 90%)", undefined, true], },
@@ -108,12 +108,12 @@ const ENTITY_PROPERTIES = {
     shield: { item: true, equipment_slot: EQUIP_OFF_HAND, render_order: 2, bonus_defense: 1, visuals: ['[', "hsl(40, 50%, 80%)"], },
 };
 /* Always use the current value of 'type' to get the entity
-    properties, so that we can change the object type later (e.g. to
-    'corpse'). JS lets us forward these properties to a getter, and I
-    use the getter to get the corresponding value from
-    ENTITY_PROPERTIES. This loop looks weird but I kept having bugs
-    where I forgot to forward a property manually, so I wanted to
-    automate it. */
+   properties, so that we can change the object type later (e.g. to
+   'corpse'). JS lets us forward these properties to a getter, and I
+   use the getter to get the corresponding value from
+   ENTITY_PROPERTIES. This loop looks weird but I kept having bugs
+   where I forgot to forward a property manually, so I wanted to
+   automate it. */
 function calculateEquipmentBonus(equipment, field) {
     if (!equipment) return 0;
     return equipment
@@ -315,7 +315,7 @@ function updateTileMapFov(tileMap) {
         (x, y) => tileMap.has(x, y) && tileMap.get(x, y).walkable
     );
 }
-    
+
 function createTileMap(dungeonLevel) {
     let tileMap = createMap();
     const digger = new ROT.Map.Digger(WIDTH, HEIGHT);
@@ -357,7 +357,7 @@ function computeLightMap(center, tileMap) {
         lightMap.set(x, y, visibility);
         if (visibility > 0.0) {
             if (tileMap.has(x, y))
-            tileMap.get(x, y).explored = true;
+                tileMap.get(x, y).explored = true;
         }
     });
     return lightMap;
@@ -465,62 +465,62 @@ function deserializeGlobalState(json) {
 
 function useItem(entity, item) {
     switch (item.type) {
-    case 'healing potion': {
-        const healing = 40;
-        if (entity.hp === entity.effective_max_hp) {
-            print(`You are already at full health`, 'warning');
-        } else {
-            print(`Your wounds start to feel better!`, 'healing');
-            entity.hp = ROT.Util.clamp(entity.hp + healing, 0, entity.effective_max_hp);
-            moveEntityTo(item, NOWHERE);
-            enemiesMove();
-        }
-        break;
-    }
-    case 'lightning scroll': {
-        if (castLighting(entity)) {
-            moveEntityTo(item, NOWHERE);
-            enemiesMove();
-            draw();
-        }
-        break;
-    }
-    case 'fireball scroll': {
-        targetingOverlay.open(
-            `Click a location to cast fireball, or <kbd>ESC</kbd> to cancel`,
-            (x, y) => {
-                if (castFireball(entity, x, y)) {
-                    moveEntityTo(item, NOWHERE);
-                    enemiesMove();
-                }
-                targetingOverlay.close();
-                draw();
-            });
-        break;
-    }
-    case 'confusion scroll': {
-        targetingOverlay.open(
-            `Click on an enemy to confuse it, or <kbd>ESC</kbd> to cancel`,
-            (x, y) => {
-                if (castConfusion(entity, x, y)) {
-                    moveEntityTo(item, NOWHERE);
-                    enemiesMove();
-                }
-                targetingOverlay.close();
-                draw();
-            });
-        break;
-    }
-    default: {
-        if (item.equipment_slot !== undefined) {
-            let oldItem = entities.get(player.equipment[item.equipment_slot]);
-            swapEquipment(player, item.location.slot, item.equipment_slot);
-            print(`You unquip ${oldItem.type} and equip ${item.type}.`, 'welcome');
-            enemiesMove();
-        } else {
-            throw `useItem on unknown item ${item}`;
-        }
-    }
+      case 'healing potion': {
+          const healing = 40;
+          if (entity.hp === entity.effective_max_hp) {
+              print(`You are already at full health`, 'warning');
+          } else {
+              print(`Your wounds start to feel better!`, 'healing');
+              entity.hp = ROT.Util.clamp(entity.hp + healing, 0, entity.effective_max_hp);
+              moveEntityTo(item, NOWHERE);
+              enemiesMove();
+          }
+          break;
+      }
+      case 'lightning scroll': {
+          if (castLighting(entity)) {
+              moveEntityTo(item, NOWHERE);
+              enemiesMove();
+              draw();
+          }
+          break;
+      }
+      case 'fireball scroll': {
+          targetingOverlay.open(
+              `Click a location to cast fireball, or <kbd>ESC</kbd> to cancel`,
+              (x, y) => {
+                  if (castFireball(entity, x, y)) {
+                      moveEntityTo(item, NOWHERE);
+                      enemiesMove();
+                  }
+                  targetingOverlay.close();
+                  draw();
+              });
+          break;
+      }
+      case 'confusion scroll': {
+          targetingOverlay.open(
+              `Click on an enemy to confuse it, or <kbd>ESC</kbd> to cancel`,
+              (x, y) => {
+                  if (castConfusion(entity, x, y)) {
+                      moveEntityTo(item, NOWHERE);
+                      enemiesMove();
+                  }
+                  targetingOverlay.close();
+                  draw();
+              });
+          break;
+      }
+      default: {
+          if (item.equipment_slot !== undefined) {
+              let oldItem = entities.get(player.equipment[item.equipment_slot]);
+              swapEquipment(player, item.location.slot, item.equipment_slot);
+              print(`You unquip ${oldItem.type} and equip ${item.type}.`, 'welcome');
+              enemiesMove();
+          } else {
+              throw `useItem on unknown item ${item}`;
+          }
+      }
     }
 }
 
@@ -712,56 +712,56 @@ function enemiesMove() {
     for (let entity of entities.values()) {
         if (!entity.dead && entity.location.x !== undefined && entity.ai) {
             switch (entity.ai.behavior) {
-            case 'move_to_player': {
-                if (!(lightMap.get(entity.location.x, entity.location.y) > 0.0)) {
-                    // The player can't see the monster, so the monster
-                    // can't see the player, so the monster doesn't move
-                    continue;
-                }
+              case 'move_to_player': {
+                  if (!(lightMap.get(entity.location.x, entity.location.y) > 0.0)) {
+                      // The player can't see the monster, so the monster
+                      // can't see the player, so the monster doesn't move
+                      continue;
+                  }
 
-                let dx = player.location.x - entity.location.x,
-                    dy = player.location.y - entity.location.y;
+                  let dx = player.location.x - entity.location.x,
+                      dy = player.location.y - entity.location.y;
 
-                // Pick either vertical or horizontal movement randomly
-                let stepx = 0, stepy = 0;
-                if (randint(1, Math.abs(dx) + Math.abs(dy)) <= Math.abs(dx)) {
-                    stepx = dx / Math.abs(dx);
-                } else {
-                    stepy = dy / Math.abs(dy);
-                }
-                let x = entity.location.x + stepx,
-                    y = entity.location.y + stepy;
-                if (tileMap.get(x, y).walkable) {
-                    let target = blockingEntityAt(x, y);
-                    if (target && target.id === player.id) {
-                        attack(entity, player);
-                    } else if (target) {
-                        // another monster there; can't move
-                    } else {
-                        moveEntityTo(entity, {x, y});
-                    }
-                }
-                break;
-            }
-            case 'confused': {
-                if (--entity.ai.turns > 0) {
-                    let stepx = randint(-1, 1), stepy = randint(-1, 1);
-                    let x = entity.location.x + stepx,
-                        y = entity.location.y + stepy;
-                    if (tileMap.get(x, y).walkable) {
-                        if (!blockingEntityAt(x, y)) {
-                            moveEntityTo(entity, {x, y});
-                        }
-                    }
-                } else {
-                    entity.ai = {behavior: 'move_to_player'};
-                    print(`The ${entity.name} is no longer confused!`, 'enemy-attack');
-                }
-                break;
-            }
-            default: {
-                throw `unknown enemy ai: ${entity.ai}`;
-            }
+                  // Pick either vertical or horizontal movement randomly
+                  let stepx = 0, stepy = 0;
+                  if (randint(1, Math.abs(dx) + Math.abs(dy)) <= Math.abs(dx)) {
+                      stepx = dx / Math.abs(dx);
+                  } else {
+                      stepy = dy / Math.abs(dy);
+                  }
+                  let x = entity.location.x + stepx,
+                      y = entity.location.y + stepy;
+                  if (tileMap.get(x, y).walkable) {
+                      let target = blockingEntityAt(x, y);
+                      if (target && target.id === player.id) {
+                          attack(entity, player);
+                      } else if (target) {
+                          // another monster there; can't move
+                      } else {
+                          moveEntityTo(entity, {x, y});
+                      }
+                  }
+                  break;
+              }
+              case 'confused': {
+                  if (--entity.ai.turns > 0) {
+                      let stepx = randint(-1, 1), stepy = randint(-1, 1);
+                      let x = entity.location.x + stepx,
+                          y = entity.location.y + stepy;
+                      if (tileMap.get(x, y).walkable) {
+                          if (!blockingEntityAt(x, y)) {
+                              moveEntityTo(entity, {x, y});
+                          }
+                      }
+                  } else {
+                      entity.ai = {behavior: 'move_to_player'};
+                      print(`The ${entity.name} is no longer confused!`, 'enemy-attack');
+                  }
+                  break;
+              }
+              default: {
+                  throw `unknown enemy ai: ${entity.ai}`;
+              }
             }
         }
     }
@@ -951,96 +951,96 @@ function handleInventoryKeys(action) {
 function handleCharacterKeys(key) {
     return (key === 'Escape' || key == 'c') && ['character-close'];
 }
-    
+
 function handleTargetingKeys(key) {
     return key === 'Escape' && ['targeting-cancel'];
 }
 
 function runAction(action) {
     switch (action[0]) {
-    case 'move': {
-        let [_, dx, dy] = action;
-        playerMoveBy(dx, dy);
-        break;
-    }
+      case 'move': {
+          let [_, dx, dy] = action;
+          playerMoveBy(dx, dy);
+          break;
+      }
 
-    case 'pickup':               { playerPickupItem();           break; }
-    case 'stairs-down':          { playerGoDownStairs();         break; }
-    case 'inventory-open-use':   { inventoryOverlayUse.open();   break; }
-    case 'inventory-close-use':  { inventoryOverlayUse.close();  break; }
-    case 'inventory-open-drop':  { inventoryOverlayDrop.open();  break; }
-    case 'inventory-close-drop': { inventoryOverlayDrop.close(); break; }
-    case 'character-open':       { characterOverlay.open();      break; }
-    case 'character-close':      { characterOverlay.close();     break; }
-    case 'targeting-cancel':     { targetingOverlay.close();     break; }
+      case 'pickup':               { playerPickupItem();           break; }
+      case 'stairs-down':          { playerGoDownStairs();         break; }
+      case 'inventory-open-use':   { inventoryOverlayUse.open();   break; }
+      case 'inventory-close-use':  { inventoryOverlayUse.close();  break; }
+      case 'inventory-open-drop':  { inventoryOverlayDrop.open();  break; }
+      case 'inventory-close-drop': { inventoryOverlayDrop.close(); break; }
+      case 'character-open':       { characterOverlay.open();      break; }
+      case 'character-close':      { characterOverlay.close();     break; }
+      case 'targeting-cancel':     { targetingOverlay.close();     break; }
 
-    case 'upgrade': {
-        let [_, stat] = action;
-        switch (stat) {
-        case 'hp':
-            player.base_max_hp += 20;
-            player.hp += 20;
-            break;
-        case 'str':
-            player.base_power += 1;
-            break;
-        case 'def':
-            player.base_defense += 1;
-            break;
-        default:
-            throw `invalid upgrade ${stat}`;
-        }
-        upgradeOverlay.close();
-        break;
-    }
-    case 'inventory-do-use': {
-        let [_, id] = action;
-        inventoryOverlayUse.close();
-        useItem(player, entities.get(id));
-        break;
-    }
-    case 'inventory-do-drop': {
-        let [_, id] = action;
-        inventoryOverlayDrop.close();
-        dropItem(player, entities.get(id));
-        break;
-    }
-    case 'restore-game': {
-        let json = window.localStorage.getItem(STORAGE_KEY);
-        if (json === null) {
-            setTemporaryOverlayMessage("There is no saved game.");
-        } else {
-            setTemporaryOverlayMessage("Restored saved game.");
-            deserializeGlobalState(json);
-            drawMessages();
-            draw();
-        }
-        break;
-    }
-    case 'save-game': {
-        let json = serializeGlobalState();
-        window.localStorage.setItem(STORAGE_KEY, json);
-        setTemporaryOverlayMessage("Saved game.");
-        break;
-    }
-    case 'toggle-debug': {
-        DEBUG_ALL_EXPLORED = !DEBUG_ALL_EXPLORED;
-        break;
-    }
-    default:
-        throw `unhandled action ${action}`;
+      case 'upgrade': {
+          let [_, stat] = action;
+          switch (stat) {
+            case 'hp':
+                player.base_max_hp += 20;
+                player.hp += 20;
+                break;
+            case 'str':
+                player.base_power += 1;
+                break;
+            case 'def':
+                player.base_defense += 1;
+                break;
+            default:
+                throw `invalid upgrade ${stat}`;
+          }
+          upgradeOverlay.close();
+          break;
+      }
+      case 'inventory-do-use': {
+          let [_, id] = action;
+          inventoryOverlayUse.close();
+          useItem(player, entities.get(id));
+          break;
+      }
+      case 'inventory-do-drop': {
+          let [_, id] = action;
+          inventoryOverlayDrop.close();
+          dropItem(player, entities.get(id));
+          break;
+      }
+      case 'restore-game': {
+          let json = window.localStorage.getItem(STORAGE_KEY);
+          if (json === null) {
+              setTemporaryOverlayMessage("There is no saved game.");
+          } else {
+              setTemporaryOverlayMessage("Restored saved game.");
+              deserializeGlobalState(json);
+              drawMessages();
+              draw();
+          }
+          break;
+      }
+      case 'save-game': {
+          let json = serializeGlobalState();
+          window.localStorage.setItem(STORAGE_KEY, json);
+          setTemporaryOverlayMessage("Saved game.");
+          break;
+      }
+      case 'toggle-debug': {
+          DEBUG_ALL_EXPLORED = !DEBUG_ALL_EXPLORED;
+          break;
+      }
+      default:
+          throw `unhandled action ${action}`;
     }
     draw();
 }
 
 function currentKeyHandler() {
     return targetingOverlay.visible? handleTargetingKeys
-         : upgradeOverlay.visible? handleUpgradeKeys
-         : inventoryOverlayUse.visible? handleInventoryKeys('use')
-         : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
-         : characterOverlay.visible? handleCharacterKeys
-         : player.dead? handlePlayerDeadKeys
-         : handlePlayerKeys;
+        : upgradeOverlay.visible? handleUpgradeKeys
+        : inventoryOverlayUse.visible? handleInventoryKeys('use')
+        : inventoryOverlayDrop.visible? handleInventoryKeys('drop')
+        : characterOverlay.visible? handleCharacterKeys
+        : player.dead? handlePlayerDeadKeys
+        : handlePlayerKeys;
 }
 
 function handleKeyDown(event) {
