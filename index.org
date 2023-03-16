@@ -42,7 +42,7 @@ HTML:
 
 #+begin_src xml
 <figure id="game"></figure>
-<script src="https://unpkg.com/rot-js"></script>
+<script src="third-party/rot.js"></script>
 <script src="game.js"></script>
 #+end_src
 
@@ -1452,6 +1452,6 @@ Other things I considered but didn't get around to:
   </style>
 
   Created 18 Jun 2020 with the help of <a href="https://ondras.github.io/rot.js/hp/">rot.js</a>; &#160;
-  <!-- hhmts start -->Last modified: 23 Jun 2021<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 11 Jan 2023<!-- hhmts end -->
 </x:footer>
 #+end_export
