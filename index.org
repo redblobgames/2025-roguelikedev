@@ -1,4 +1,4 @@
-#+title: r/roguelikedev summer tutorial
+#+title: 2020 Summer Roguelike project
 #+date: <2020-06-18 Thu>
 #+options: toc:nil
 
@@ -917,7 +917,7 @@ This works nicely! /Except/ on Chrome, where it works initially but then fails l
 
 The next step is to attach a =mousemove= listener to the =<canvas>=. I didn't integrate into the main game loop, but instead have this running independently.
 
-Not mentioned in the ROT.js interactive manual, ROT.js's display class has a useful method =eventToPosition=, documented [[https://ondras.github.io/rot.js/doc/classes/_display_display_.display.html#eventtoposition][here]]. It takes a mouse event and gives us back a grid tile location. If it returns =[-1, -1]= it was out of range (which seems like it should never happen, but does).
+Not mentioned in the ROT.js interactive manual, ROT.js's display class has a useful method =eventToPosition=, documented [[https://ondras.github.io/rot.js/doc/classes/display_display.default.html#eventToPosition][here]]. It takes a mouse event and gives us back a grid tile location. If it returns =[-1, -1]= it was out of range (which seems like it should never happen, but does).
 
 #+begin_src js
 function allEntitiesAt(x, y) {
@@ -1452,6 +1452,6 @@ Other things I considered but didn't get around to:
   </style>
 
   Created 18 Jun 2020 with the help of <a href="https://ondras.github.io/rot.js/hp/">rot.js</a>; &#160;
-  <!-- hhmts start -->Last modified: 19 Oct 2023<!-- hhmts end -->
+  <!-- hhmts start -->Last modified: 31 Aug 2025<!-- hhmts end -->
 </x:footer>
 #+end_export
